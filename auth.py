@@ -8,8 +8,11 @@ from datetime import datetime
 def get_current_user():
     session = request.environ.get('beaker.session')
     if session and 'user_id' in session:
-        user = query_one("SELECT * FROM users WHERE id = %s", (session['user_id'],))
-        return user
+        try:
+            user = query_one("SELECT * FROM users WHERE id = %s", (session['user_id'],))
+            return user
+        except Exception:
+            return None
     return None
 
 
@@ -28,17 +31,23 @@ def require_login(f):
 
 
 def login_user(username, password):
-    user = query_one("SELECT * FROM users WHERE username = %s", (username,))
+    try:
+        user = query_one("SELECT * FROM users WHERE username = %s", (username,))
+    except Exception:
+        return None, "数据库未就绪，请先检查 PostgreSQL 连接配置"
     if not user:
         return None, "用户不存在"
     if not verify_password(password, user['password_hash']):
         return None, "密码错误"
     execute("UPDATE users SET last_login = %s WHERE id = %s", (datetime.now(), user['id']))
-    session = request.environ['beaker.session']
+    session = request.environ.get('beaker.session')
+    if session is None:
+        return None, "会话初始化失败，请重试"
     session['user_id'] = user['id']
     session['username'] = user['username']
     session['real_name'] = user['real_name']
-    session.save()
+    if hasattr(session, 'save'):
+        session.save()
     return user, None
 
 

@@ -75,7 +75,6 @@ session_opts = {
 def make_app():
     _app = Bottle()
     app = beaker.middleware.SessionMiddleware(_app, session_opts)
-    _app.app = app
 
     @_app.hook('before_request')
     def _auto_update_course_status():
@@ -109,15 +108,15 @@ def make_app():
             user, err = auth.login_user(username, password)
             if err:
                 return render('login', error=err, username=username)
-            redirect('/')
+            return redirect('/')
         if auth.get_current_user():
-            redirect('/')
+            return redirect('/')
         return render('login', error=None, username='')
 
     @_app.route('/logout')
     def logout():
         auth.logout_user()
-        redirect('/login')
+        return redirect('/login')
 
     @_app.route('/stores')
     @auth.require_login
@@ -505,7 +504,7 @@ def make_app():
 
     @_app.error(500)
     def error500(error):
-        return render('errors/500'), 500
+        return render('errors/500', error=error), 500
 
     return _app, app
 
@@ -541,4 +540,6 @@ def _render_course_row(course):
 
 if __name__ == '__main__':
     _app, app = make_app()
-    _app.run(host='0.0.0.0', port=8080, debug=True, reloader=True)
+    from wsgiref.simple_server import make_server
+    server = make_server('0.0.0.0', 8080, app)
+    server.serve_forever()

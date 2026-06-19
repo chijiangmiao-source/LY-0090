@@ -92,5 +92,5 @@ INSERT INTO classrooms (store_id, name, capacity, description) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO users (username, password_hash, real_name, role, store_id) VALUES
-    ('admin', 'pbkdf2:sha256:260000$admin$8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', '系统管理员', 'admin', NULL)
+    ('admin', 'pbkdf2:sha256:260000$4b8a1a0f8b4cf5f8$16341e710f2eb998c4e1d6506c9877ed906af3d5f469f2d770953b4c2ff83dbf', '系统管理员', 'admin', NULL)
 ON CONFLICT DO NOTHING;
