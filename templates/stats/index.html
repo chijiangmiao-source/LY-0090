@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}数据统计{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-bar-chart me-2"></i>课后统计</h4>
+        <small class="text-muted">满班率、候补转正率、失约分析</small>
+    </div>
+</div>
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">门店</label>
+                <select name="store_id" class="form-select form-select-sm">
+                    <option value="">全部门店</option>
+                    {% for s in stores %}
+                    <option value="{{ s['id'] }}" {% if selected_store == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">开始日期</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">结束日期</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-search"></i> 统计</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="small text-muted mb-1">整体满班率</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-primary">{{ overall['fill_rate'] }}%</span>
+                </div>
+                <div class="mt-2 small text-muted">
+                    实到 {{ overall['actual_attendance'] }} / 容量 {{ overall['total_capacity'] }}
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar bg-primary" style="width:{{ overall['fill_rate'] }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-success">
+            <div class="card-body">
+                <div class="small text-muted mb-1">满班课程率</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-success">{{ overall['full_class_rate'] }}%</span>
+                </div>
+                <div class="mt-2 small text-muted">
+                    满班 {{ overall['full_classes'] }} / 已结束 {{ overall['completed_courses'] }} 门
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar bg-success" style="width:{{ overall['full_class_rate'] }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="small text-muted mb-1">候补转正率</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-warning">{{ overall['promotion_rate'] }}%</span>
+                </div>
+                <div class="mt-2 small text-muted">
+                    转正 {{ overall['waitlist_promoted'] }} / 候补 {{ overall['waitlist_total'] }} 人
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar bg-warning" style="width:{{ overall['promotion_rate'] }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="small text-muted mb-1">会员失约率</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-danger">{{ overall['no_show_rate'] }}%</span>
+                </div>
+                <div class="mt-2 small text-muted">
+                    失约 {{ overall['no_show_count'] }} / 报名 {{ overall['total_registrations'] }} 人
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar bg-danger" style="width:{{ overall['no_show_rate'] }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-building me-1"></i> 门店对比</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">门店</th>
+                            <th>课程数</th>
+                            <th>签到</th>
+                            <th>失约</th>
+                            <th>转正</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in store_comp %}
+                        <tr>
+                            <td class="ps-3 fw-medium">{{ s['store_name'] }}</td>
+                            <td>{{ s['course_count'] }}</td>
+                            <td><span class="text-success">{{ s['checked_in'] or 0 }}</span></td>
+                            <td><span class="text-danger">{{ s['no_shows'] or 0 }}</span></td>
+                            <td><span class="text-primary">{{ s['promoted'] or 0 }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person-x me-1"></i> 失约次数排行</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">#</th>
+                            <th>会员姓名</th>
+                            <th>手机号</th>
+                            <th class="text-end">失约次数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in no_show_rank %}
+                        <tr>
+                            <td class="ps-3"><span class="badge bg-{{ 'danger' if loop.index <= 3 else 'secondary' }} rounded-pill">{{ loop.index }}</span></td>
+                            <td class="fw-medium">{{ m['member_name'] }}</td>
+                            <td><span class="text-monospace small">{{ m['member_phone'] }}</span></td>
+                            <td class="text-end"><span class="fw-bold text-danger">{{ m['no_show_count'] }}</span>次</td>
+                        </tr>
+                        {% endfor %}
+                        {% if not no_show_rank %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">暂无失约记录</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header"><i class="bi bi-table me-1"></i> 已结束课程明细</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">课程名称</th>
+                    <th>门店/教室</th>
+                    <th>开课时间</th>
+                    <th class="text-center">容量</th>
+                    <th class="text-center">签到</th>
+                    <th class="text-center">失约</th>
+                    <th class="text-center">退课</th>
+                    <th class="text-center">候补</th>
+                    <th class="text-center">转正</th>
+                    <th class="text-end">满班率</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cs in course_stats %}
+                {% set pct = ((cs['checked_in'] / cs['max_students'] * 100)|int) if cs['max_students'] > 0 else 0 %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-medium">{{ cs['course_name'] }}</div>
+                        <small class="text-muted">{{ cs['course_code'] }}</small>
+                    </td>
+                    <td>
+                        <div>{{ cs['classroom_name'] }}</div>
+                        <small class="text-muted">{{ cs['store_name'] }}</small>
+                    </td>
+                    <td><small>{{ cs['start_time']|datetime }}</small></td>
+                    <td class="text-center fw-medium">{{ cs['max_students'] }}</td>
+                    <td class="text-center text-success fw-medium">{{ cs['checked_in'] }}</td>
+                    <td class="text-center text-danger">{{ cs['no_shows'] }}</td>
+                    <td class="text-center text-warning">{{ cs['dropped'] + cs['frozen'] }}</td>
+                    <td class="text-center">{{ cs['waitlisted'] }}</td>
+                    <td class="text-center text-primary">{{ cs['promoted'] }}</td>
+                    <td class="text-end">
+                        <div class="d-flex align-items-center gap-2 justify-content-end">
+                            <span class="fw-medium">{{ pct }}%</span>
+                            <div class="progress" style="width:60px;">
+                                <div class="progress-bar {% if pct >= 100 %}bg-danger{% elif pct >= 80 %}bg-warning{% else %}bg-primary{% endif %}" style="width:{{ pct if pct <= 100 else 100 }}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not course_stats %}
+                <tr><td colspan="10" class="text-center py-5 text-muted">暂无已结束课程数据</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

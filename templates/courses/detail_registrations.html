@@ -1,0 +1,132 @@
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-1"></i> 正式报名名单 ({{ normal_count }}/{{ course['max_students'] }})</span>
+                <span class="small text-muted">
+                    签到 {{ normal_regs | selectattr('status', 'equalto', 'checked_in') | list | length }}人 ·
+                    失约 {{ normal_regs | selectattr('status', 'equalto', 'no_show') | list | length }}人
+                </span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">#</th>
+                            <th>会员姓名</th>
+                            <th>手机号</th>
+                            <th>报名时间</th>
+                            <th>签到/退课</th>
+                            <th>状态</th>
+                            <th class="pe-3 text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in normal_regs %}
+                        <tr>
+                            <td class="ps-3">{{ loop.index }}</td>
+                            <td class="fw-medium">{{ r['member_name'] }}</td>
+                            <td><span class="text-monospace small">{{ r['member_phone'] }}</span></td>
+                            <td><small class="text-muted">{{ r['registration_time']|datetime }}</small></td>
+                            <td>
+                                <small>
+                                    {% if r['checkin_time'] %}
+                                    <span class="text-success">{{ r['checkin_time']|time }}</span>
+                                    {% elif r['dropout_time'] %}
+                                    <span class="text-warning">{{ r['dropout_time']|time }}</span>
+                                    {% else %}-{% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                {% if r['promoted_from_waitlist'] %}
+                                <span class="badge bg-primary me-1">转正</span>
+                                {% endif %}
+                                <span class="badge {{ r['status']|status_class }} rounded-pill">{{ r['status']|status_text }}</span>
+                            </td>
+                            <td class="pe-3 text-end">
+                                {% if r['status'] in ['registered'] %}
+                                <button class="btn btn-sm btn-success" hx-post="/registrations/{{ r['id'] }}/checkin" hx-target="#regs-container">
+                                    <i class="bi bi-check2"></i> 签到
+                                </button>
+                                {% endif %}
+                                {% if r['status'] in ['registered', 'waitlist'] %}
+                                <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#regs-container"
+                                        hx-confirm="确认办理退课/冻结？">
+                                    <i class="bi bi-x-lg"></i> 退课
+                                </button>
+                                {% endif %}
+                                {% if r['status'] == 'registered' and course['status'] == 'completed' %}
+                                <button class="btn btn-sm btn-outline-danger" hx-post="/registrations/{{ r['id'] }}/no_show" hx-target="#regs-container"
+                                        hx-confirm="确认标记为失约？">
+                                    <i class="bi bi-person-x"></i> 失约
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not normal_regs %}
+                        <tr><td colspan="7" class="text-center py-4 text-muted">暂无报名记录</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-ol me-1"></i> 候补队列 ({{ waitlist_count }}人)
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">顺序</th>
+                            <th>姓名</th>
+                            <th>手机</th>
+                            <th class="pe-3 text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in waitlist %}
+                        <tr>
+                            <td class="ps-3">
+                                <span class="badge bg-warning text-dark rounded-pill">#{{ r['waitlist_order'] }}</span>
+                            </td>
+                            <td class="fw-medium">{{ r['member_name'] }}</td>
+                            <td><small class="text-monospace">{{ r['member_phone'] }}</small></td>
+                            <td class="pe-3 text-end">
+                                {% if normal_count < course['max_students'] %}
+                                <button class="btn btn-sm btn-primary" hx-post="/registrations/{{ r['id'] }}/promote" hx-target="#regs-container"
+                                        hx-confirm="确认将该会员手动转正？">
+                                    <i class="bi bi-arrow-up"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#regs-container"
+                                        hx-confirm="确认让该会员退出候补？">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not waitlist %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">暂无候补会员</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card mt-3">
+            <div class="card-body small text-muted">
+                <div class="fw-bold text-secondary mb-2"><i class="bi bi-info-circle"></i> 业务规则</div>
+                <ul class="mb-0 ps-3">
+                    <li>冻结时间前可正常退课，之后进入冻结状态</li>
+                    <li>已签到会员不可被候补替换</li>
+                    <li>候补严格按顺序自动递补</li>
+                    <li>同一会员不能同时段报名两门课</li>
+                    <li>课程结束后退课不计入递补</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

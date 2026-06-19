@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}报名记录{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i>报名记录</h4>
+        <small class="text-muted">查看所有报名和候补记录</small>
+    </div>
+</div>
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">课程</label>
+                <select name="course_id" class="form-select form-select-sm">
+                    <option value="">全部课程</option>
+                    {% for c in courses[:50] %}
+                    <option value="{{ c['id'] }}" {% if selected_course == c['id'] %}selected{% endif %}>{{ c['course_name'] }} ({{ c['start_time']|date }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">手机号</label>
+                <input type="text" name="member_phone" class="form-control form-control-sm" placeholder="输入手机号查询" value="{{ phone }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">状态</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">全部状态</option>
+                    <option value="registered" {% if selected_status == 'registered' %}selected{% endif %}>已报名</option>
+                    <option value="checked_in" {% if selected_status == 'checked_in' %}selected{% endif %}>已签到</option>
+                    <option value="dropped" {% if selected_status == 'dropped' %}selected{% endif %}>已退课</option>
+                    <option value="frozen" {% if selected_status == 'frozen' %}selected{% endif %}>已冻结</option>
+                    <option value="waitlist" {% if selected_status == 'waitlist' %}selected{% endif %}>候补中</option>
+                    <option value="no_show" {% if selected_status == 'no_show' %}selected{% endif %}>失约</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-search"></i> 筛选</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">报名编号</th>
+                    <th>会员</th>
+                    <th>课程</th>
+                    <th>类型</th>
+                    <th>报名时间</th>
+                    <th>签到/退课</th>
+                    <th>状态</th>
+                    <th class="pe-3 text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in registrations %}
+                <tr>
+                    <td class="ps-3"><small class="fw-mono text-muted">{{ r['reg_code'] }}</small></td>
+                    <td>
+                        <div class="fw-medium">{{ r['member_name'] }}</div>
+                        <small class="text-monospace text-muted">{{ r['member_phone'] }}</small>
+                    </td>
+                    <td>
+                        <div class="fw-medium">{{ r['course_name'] }}</div>
+                        <small class="text-muted">{{ r['start_time']|datetime }}</small>
+                    </td>
+                    <td>
+                        {% if r['is_waitlist'] %}
+                        <span class="badge bg-warning text-dark">候补 #{{ r['waitlist_order'] }}</span>
+                        {% else %}
+                        <span class="badge bg-info">正式</span>
+                        {% endif %}
+                        {% if r['promoted_from_waitlist'] %}
+                        <span class="badge bg-primary ms-1">转正</span>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ r['registration_time']|datetime }}</small></td>
+                    <td>
+                        <small>
+                            {% if r['checkin_time'] %}
+                            <div class="text-success">签到: {{ r['checkin_time']|datetime }}</div>
+                            {% endif %}
+                            {% if r['dropout_time'] %}
+                            <div class="text-warning">退课: {{ r['dropout_time']|datetime }}</div>
+                            {% endif %}
+                            {% if not r['checkin_time'] and not r['dropout_time'] %}-{% endif %}
+                        </small>
+                    </td>
+                    <td>
+                        <span class="badge {{ r['status']|status_class }} rounded-pill">{{ r['status']|status_text }}</span>
+                    </td>
+                    <td class="pe-3 text-end">
+                        <a href="/courses/{{ r['course_id'] }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> 课程</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not registrations %}
+                <tr><td colspan="8" class="text-center py-5 text-muted">暂无报名记录</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

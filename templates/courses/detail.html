@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ course['course_name'] }} - 课程详情{% endblock %}
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-2">
+            <li class="breadcrumb-item"><a href="/courses">课程排期</a></li>
+            <li class="breadcrumb-item active">{{ course['course_name'] }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-calendar2-event me-2"></i>{{ course['course_name'] }}</h4>
+            <small class="text-muted">{{ course['course_code'] }} · {{ course['store_name'] }} · {{ course['classroom_name'] }}</small>
+        </div>
+        <span class="badge {{ course['status']|status_class }} rounded-pill fs-6">{{ course['status']|status_text }}</span>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">开课时间</div>
+                <div class="fw-bold">{{ course['start_time']|datetime }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">结束时间</div>
+                <div class="fw-bold">{{ course['end_time']|datetime }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">冻结时间（禁止退课）</div>
+                <div class="fw-bold text-warning">{{ course['freeze_time']|datetime }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">报名进度</div>
+                <div class="fw-bold">{{ normal_count }}/{{ course['max_students'] }}
+                    {% if waitlist_count > 0 %}
+                    <span class="badge bg-warning text-dark ms-1">候补{{ waitlist_count }}</span>
+                    {% endif %}
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar {% if normal_count >= course['max_students'] %}bg-danger{% elif normal_count/course['max_students'] >= 0.8 %}bg-warning{% else %}bg-primary{% endif %}" style="width:{{ ((normal_count/course['max_students']*100)|int) if course['max_students'] > 0 else 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-plus me-1"></i> 快速报名
+            </div>
+            <div class="card-body">
+                <form hx-post="/registrations/create" hx-target="#regs-container">
+                    <input type="hidden" name="course_id" value="{{ course['id'] }}">
+                    <input type="hidden" name="from_detail" value="1">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <input type="text" name="member_name" class="form-control" placeholder="会员姓名" required>
+                        </div>
+                        <div class="col-md-5">
+                            <input type="text" name="member_phone" class="form-control" placeholder="手机号" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> 报名</button>
+                        </div>
+                    </div>
+                    {% if normal_count >= course['max_students'] %}
+                    <div class="mt-2 small text-warning"><i class="bi bi-exclamation-triangle"></i> 正式名额已满，新报名将进入候补队列</div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-qr-code me-1"></i> 手机号快速签到
+            </div>
+            <div class="card-body">
+                <form hx-post="/registrations/checkin_by_phone" hx-target="#regs-container">
+                    <input type="hidden" name="course_id" value="{{ course['id'] }}">
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <input type="text" name="member_phone" class="form-control" placeholder="输入会员手机号签到" required>
+                        </div>
+                        <div class="col-md-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-success flex-grow-1"><i class="bi bi-check2-circle"></i> 签到</button>
+                            {% if course['status'] == 'completed' %}
+                            <button type="button" class="btn btn-outline-warning"
+                                    hx-post="/courses/{{ course['id'] }}/process_no_shows" hx-target="#regs-container"
+                                    hx-confirm="确认批量标记未签到会员为失约？">
+                                <i class="bi bi-person-x"></i> 失约
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="regs-container">
+    {% include 'courses/detail_registrations.html' %}
+</div>
+{% endblock %}

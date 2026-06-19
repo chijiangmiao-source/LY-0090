@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}门店管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-building me-2"></i>门店管理</h4>
+        <small class="text-muted">管理所有门店信息</small>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#storeModal"
+            hx-get="/stores/create" hx-target="#storeModalBody">
+        <i class="bi bi-plus-lg"></i> 新增门店
+    </button>
+</div>
+<div id="alert-container"></div>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">#</th>
+                    <th>门店名称</th>
+                    <th>地址</th>
+                    <th>联系电话</th>
+                    <th>创建时间</th>
+                    <th class="pe-3 text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody id="store-list">
+                {% for s in stores %}
+                    {% include 'stores/_row.html' %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="modal fade" id="storeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">门店信息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="storeModalBody">加载中...</div>
+        </div>
+    </div>
+</div>
+<script>
+const storeModal = document.getElementById('storeModal');
+storeModal.addEventListener('hidden.bs.modal', () => {
+    document.getElementById('storeModalBody').innerHTML = '加载中...';
+});
+</script>
+{% endblock %}

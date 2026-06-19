@@ -1,0 +1,26 @@
+{% if error %}<div class="alert alert-danger m-3">{{ error }}</div>{% endif %}
+<form hx-post="{% if store %}/stores/{{ store['id'] }}/edit{% else %}/stores/create{% endif %}"
+      hx-target="{% if store %}#store-{{ store['id'] }}{% else %}#store-list{% endif %}"
+      hx-swap="{% if store %}outerHTML{% else %}beforeend{% endif %}"
+      hx-on::after-request="if(event.detail.successful) { bootstrap.Modal.getInstance(document.getElementById('storeModal')).hide(); }">
+    <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label">门店名称 *</label>
+            <input type="text" name="name" class="form-control" required value="{{ store['name'] if store else '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">地址</label>
+            <input type="text" name="address" class="form-control" value="{{ store['address'] if store else '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">联系电话</label>
+            <input type="text" name="phone" class="form-control" value="{{ store['phone'] if store else '' }}">
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> {% if store %}保存修改{% else %}创建门店{% endif %}
+        </button>
+    </div>
+</form>

@@ -1,0 +1,18 @@
+<tr id="classroom-{{ classroom['id'] }}">
+    <td class="ps-3">{{ classroom['id'] }}</td>
+    <td class="fw-medium">{{ classroom['name'] }}</td>
+    <td>{{ classroom['store_name'] or '-' }}</td>
+    <td><span class="badge bg-info">{{ classroom['capacity'] }}人</span></td>
+    <td><small class="text-muted">{{ classroom['description'] or '-' }}</small></td>
+    <td class="pe-3 text-end">
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#classroomModal"
+                hx-get="/classrooms/{{ classroom['id'] }}/edit" hx-target="#classroomModalBody">
+            <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger"
+                hx-post="/classrooms/{{ classroom['id'] }}/delete" hx-target="#alert-container"
+                hx-confirm="确认删除该教室？">
+            <i class="bi bi-trash"></i>
+        </button>
+    </td>
+</tr>

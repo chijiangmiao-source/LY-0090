@@ -1,0 +1,18 @@
+<tr id="store-{{ store['id'] }}">
+    <td class="ps-3">{{ store['id'] }}</td>
+    <td class="fw-medium">{{ store['name'] }}</td>
+    <td>{{ store['address'] or '-' }}</td>
+    <td>{{ store['phone'] or '-' }}</td>
+    <td>{{ store['created_at']|datetime }}</td>
+    <td class="pe-3 text-end">
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#storeModal"
+                hx-get="/stores/{{ store['id'] }}/edit" hx-target="#storeModalBody">
+            <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger"
+                hx-post="/stores/{{ store['id'] }}/delete" hx-target="#alert-container"
+                hx-confirm="确认删除该门店？">
+            <i class="bi bi-trash"></i>
+        </button>
+    </td>
+</tr>

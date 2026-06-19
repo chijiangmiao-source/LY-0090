@@ -1,0 +1,35 @@
+{% if error %}<div class="alert alert-danger m-3">{{ error }}</div>{% endif %}
+<form hx-post="{% if classroom %}/classrooms/{{ classroom['id'] }}/edit{% else %}/classrooms/create{% endif %}"
+      hx-target="{% if classroom %}#classroom-{{ classroom['id'] }}{% else %}#classroom-list{% endif %}"
+      hx-swap="{% if classroom %}outerHTML{% else %}beforeend{% endif %}"
+      hx-on::after-request="if(event.detail.successful) { bootstrap.Modal.getInstance(document.getElementById('classroomModal')).hide(); }">
+    <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label">所属门店 *</label>
+            <select name="store_id" class="form-select" required>
+                <option value="">请选择门店</option>
+                {% for s in stores %}
+                <option value="{{ s['id'] }}" {% if classroom and classroom['store_id'] == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">教室名称 *</label>
+            <input type="text" name="name" class="form-control" required value="{{ classroom['name'] if classroom else '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">容纳人数</label>
+            <input type="number" name="capacity" class="form-control" min="1" value="{{ classroom['capacity'] if classroom else 20 }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">备注说明</label>
+            <textarea name="description" class="form-control" rows="3">{{ classroom['description'] if classroom else '' }}</textarea>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> {% if classroom %}保存修改{% else %}创建教室{% endif %}
+        </button>
+    </div>
+</form>

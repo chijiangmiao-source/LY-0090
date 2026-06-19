@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}课程排期{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-calendar-event me-2"></i>课程排期</h4>
+        <small class="text-muted">管理所有课程安排</small>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#courseModal"
+            hx-get="/courses/create" hx-target="#courseModalBody">
+        <i class="bi bi-plus-lg"></i> 新增课程
+    </button>
+</div>
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">门店</label>
+                <select name="store_id" class="form-select form-select-sm">
+                    <option value="">全部门店</option>
+                    {% for s in stores %}
+                    <option value="{{ s['id'] }}" {% if selected_store == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">状态</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">全部状态</option>
+                    <option value="scheduled" {% if selected_status == 'scheduled' %}selected{% endif %}>未开始</option>
+                    <option value="ongoing" {% if selected_status == 'ongoing' %}selected{% endif %}>进行中</option>
+                    <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>已结束</option>
+                    <option value="cancelled" {% if selected_status == 'cancelled' %}selected{% endif %}>已取消</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">开始日期</label>
+                <input type="date" name="date_from" class="form-control form-select-sm form-control-sm" value="{{ date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">结束日期</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">关键词</label>
+                <input type="text" name="keyword" class="form-control form-control-sm" placeholder="课程名/编号" value="{{ keyword }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-search"></i> 筛选</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="alert-container"></div>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">课程编号</th>
+                    <th>课程名称</th>
+                    <th>门店/教室</th>
+                    <th>开课时间</th>
+                    <th>报名情况</th>
+                    <th>状态</th>
+                    <th class="pe-3 text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody id="course-list">
+                {% for c in courses %}
+                    {% include 'courses/_row.html' %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="modal fade" id="courseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">课程信息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="courseModalBody">加载中...</div>
+        </div>
+    </div>
+</div>
+<script>
+const courseModal = document.getElementById('courseModal');
+courseModal.addEventListener('hidden.bs.modal', () => {
+    document.getElementById('courseModalBody').innerHTML = '加载中...';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}教室管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-door-open me-2"></i>教室管理</h4>
+        <small class="text-muted">管理门店下的教室信息</small>
+    </div>
+    <div class="d-flex gap-2">
+        <select class="form-select form-select-sm" style="width:180px;" onchange="if(this.value) location.href='/classrooms?store_id='+this.value; else location.href='/classrooms';">
+            <option value="">全部门店</option>
+            {% for s in stores %}
+            <option value="{{ s['id'] }}" {% if selected_store == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#classroomModal"
+                hx-get="/classrooms/create" hx-target="#classroomModalBody">
+            <i class="bi bi-plus-lg"></i> 新增教室
+        </button>
+    </div>
+</div>
+<div id="alert-container"></div>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">#</th>
+                    <th>教室名称</th>
+                    <th>所属门店</th>
+                    <th>容量</th>
+                    <th>备注</th>
+                    <th class="pe-3 text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody id="classroom-list">
+                {% for c in classrooms %}
+                    {% include 'classrooms/_row.html' %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="modal fade" id="classroomModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">教室信息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="classroomModalBody">加载中...</div>
+        </div>
+    </div>
+</div>
+<script>
+const classroomModal = document.getElementById('classroomModal');
+classroomModal.addEventListener('hidden.bs.modal', () => {
+    document.getElementById('classroomModalBody').innerHTML = '加载中...';
+});
+</script>
+{% endblock %}

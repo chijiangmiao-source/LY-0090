@@ -1,0 +1,48 @@
+<tr id="course-{{ course['id'] }}">
+    <td class="ps-3">
+        <small class="fw-mono text-muted">{{ course['course_code'] }}</small>
+    </td>
+    <td>
+        <div class="fw-medium">{{ course['course_name'] }}</div>
+        {% if course['instructor'] %}<small class="text-muted">{{ course['instructor'] }}</small>{% endif %}
+    </td>
+    <td>
+        <div>{{ course['classroom_name'] or '-' }}</div>
+        <small class="text-muted">{{ course['store_name'] }}</small>
+    </td>
+    <td>
+        <div>{{ course['start_time']|datetime }}</div>
+        <small class="text-muted">{{ course['start_time']|time }} - {{ course['end_time']|time }}</small>
+    </td>
+    <td>
+        {% set reg = normal_count if normal_count is defined else 0 %}
+        {% set wl = waitlist_count if waitlist_count is defined else 0 %}
+        {% set max = course['max_students'] %}
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-medium">{{ reg }}/{{ max }}</span>
+            {% if wl > 0 %}
+            <span class="badge bg-warning text-dark">候补{{ wl }}</span>
+            {% endif %}
+        </div>
+        <div class="progress mt-1" style="width:140px;">
+            <div class="progress-bar {% if reg >= max %}bg-danger{% elif reg/max >= 0.8 %}bg-warning{% else %}bg-primary{% endif %}" style="width:{{ ((reg/max*100)|int) if max > 0 else 0 }}%"></div>
+        </div>
+    </td>
+    <td>
+        <span class="badge {{ course['status']|status_class }} rounded-pill">{{ course['status']|status_text }}</span>
+    </td>
+    <td class="pe-3 text-end">
+        <a href="/courses/{{ course['id'] }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+        {% if course['status'] == 'scheduled' %}
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#courseModal"
+                hx-get="/courses/{{ course['id'] }}/edit" hx-target="#courseModalBody">
+            <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-warning"
+                hx-post="/courses/{{ course['id'] }}/cancel" hx-target="#alert-container"
+                hx-confirm="确认取消该课程？">
+            <i class="bi bi-x-circle"></i>
+        </button>
+        {% endif %}
+    </td>
+</tr>

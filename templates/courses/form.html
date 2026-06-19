@@ -1,0 +1,70 @@
+{% if error %}<div class="alert alert-danger m-3">{{ error }}</div>{% endif %}
+<form hx-post="{% if course %}/courses/{{ course['id'] }}/edit{% else %}/courses/create{% endif %}"
+      hx-target="{% if course %}#course-{{ course['id'] }}{% else %}#course-list{% endif %}"
+      hx-swap="{% if course %}outerHTML{% else %}beforeend{% endif %}"
+      hx-on::after-request="if(event.detail.successful) { bootstrap.Modal.getInstance(document.getElementById('courseModal')).hide(); }">
+    <div class="modal-body">
+        <div class="row">
+            <div class="col-md-8 mb-3">
+                <label class="form-label">课程名称 *</label>
+                <input type="text" name="course_name" class="form-control" required value="{{ course['course_name'] if course else '' }}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">授课教练</label>
+                <input type="text" name="instructor" class="form-control" value="{{ course['instructor'] if course else '' }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">门店 *</label>
+                <select name="store_id" class="form-select" required id="store-select"
+                        onchange="updateClassrooms(this.value)">
+                    <option value="">请选择门店</option>
+                    {% for s in stores %}
+                    <option value="{{ s['id'] }}" {% if course and course['store_id'] == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+                    {% endfor %}
+                </select>
+                <script>
+                function updateClassrooms(storeId) {
+                    const target = document.getElementById('classroom-select');
+                    if (!storeId) {
+                        target.innerHTML = '<option value="">请选择教室</option>';
+                        return;
+                    }
+                    htmx.ajax('GET', '/classrooms/by_store/' + storeId, {target: '#classroom-select'});
+                }
+                </script>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">教室 *</label>
+                <select name="classroom_id" class="form-select" required id="classroom-select">
+                    <option value="">请选择教室</option>
+                    {% for c in classrooms %}
+                    <option value="{{ c['id'] }}" {% if course and course['classroom_id'] == c['id'] %}selected{% endif %}>{{ c['name'] }} (容量:{{ c['capacity'] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">开课时间 *</label>
+                <input type="datetime-local" name="start_time" class="form-control" required
+                       value="{{ course['start_time'].strftime('%Y-%m-%dT%H:%M') if course else '' }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">结束时间</label>
+                <input type="datetime-local" name="end_time" class="form-control"
+                       value="{{ course['end_time'].strftime('%Y-%m-%dT%H:%M') if course else '' }}">
+                <small class="text-muted">不填默认60分钟</small>
+            </div>
+            <div class="col-md-12 mb-3">
+                <label class="form-label">可报名人数</label>
+                <input type="number" name="max_students" class="form-control" min="1"
+                       value="{{ course['max_students'] if course else '' }}">
+                <small class="text-muted">不填默认使用教室容量</small>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> {% if course %}保存修改{% else %}创建课程{% endif %}
+        </button>
+    </div>
+</form>
