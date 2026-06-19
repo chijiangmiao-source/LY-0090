@@ -46,18 +46,21 @@ def render_detail_registrations(course_id, prefix_msg=None):
     normal_count = course_module.get_normal_registration_count(course_id)
     waitlist_count = course_module.get_waitlist_count(course_id)
     regs_tpl = env.get_template('courses/detail_registrations.html')
-    content = regs_tpl.render(
+    regs_content = regs_tpl.render(
         course=course, normal_regs=normal_regs, waitlist=waitlist,
         normal_count=normal_count, waitlist_count=waitlist_count,
         datetime=format_datetime, status_text=get_status_text, status_class=get_status_class
     )
+    msg_html = ''
     if prefix_msg:
-        return f'<div class="alert alert-success mb-3">{prefix_msg}</div>' + content
-    return content
+        msg_html = f'<div id="reg-msg"><div class="alert alert-success alert-dismissible fade show mb-3">{prefix_msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div></div>'
+    else:
+        msg_html = '<div id="reg-msg"></div>'
+    return msg_html + f'<div id="regs-container" hx-swap-oob="innerHTML:#regs-container">{regs_content}</div>'
 
 
 def render_error_msg(msg):
-    return f'<div class="alert alert-danger">{msg}</div>'
+    return f'<div id="reg-msg"><div class="alert alert-danger alert-dismissible fade show mb-3">{msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div></div>'
 
 
 session_opts = {
@@ -75,6 +78,14 @@ session_opts = {
 def make_app():
     _app = Bottle()
     app = beaker.middleware.SessionMiddleware(_app, session_opts)
+
+    @_app.hook('after_request')
+    def _set_charset():
+        content_type = response.content_type
+        if content_type and 'text/' in content_type and 'charset' not in content_type:
+            response.content_type = content_type + '; charset=UTF-8'
+        elif not content_type:
+            response.content_type = 'text/html; charset=UTF-8'
 
     @_app.hook('before_request')
     def _auto_update_course_status():

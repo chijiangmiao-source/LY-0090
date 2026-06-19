@@ -96,14 +96,9 @@
 </div>
 <script>
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-    const target = evt.detail.target;
-    if (target && target.innerHTML) {
-        if (target.innerHTML.includes('alert-success')) {
-            setTimeout(() => { target.querySelectorAll('.alert-success').forEach(el => el.remove()); }, 3000);
-        }
-        if (target.innerHTML.includes('alert-danger')) {
-            setTimeout(() => { target.querySelectorAll('.alert-danger').forEach(el => el.remove()); }, 5000);
-        }
+    const detail = evt.detail;
+    if (detail.failed && detail.xhr && detail.xhr.status === 401) {
+        window.location.href = '/login';
     }
 });
 </script>

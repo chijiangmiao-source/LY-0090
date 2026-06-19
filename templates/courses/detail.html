@@ -64,7 +64,7 @@
                 <i class="bi bi-person-plus me-1"></i> 快速报名
             </div>
             <div class="card-body">
-                <form hx-post="/registrations/create" hx-target="#regs-container">
+                <form hx-post="/registrations/create" hx-target="#reg-msg" hx-swap="innerHTML">
                     <input type="hidden" name="course_id" value="{{ course['id'] }}">
                     <input type="hidden" name="from_detail" value="1">
                     <div class="row g-2">
@@ -72,7 +72,7 @@
                             <input type="text" name="member_name" class="form-control" placeholder="会员姓名" required>
                         </div>
                         <div class="col-md-5">
-                            <input type="text" name="member_phone" class="form-control" placeholder="手机号" required>
+                            <input type="text" name="member_phone" class="form-control" placeholder="手机号" required pattern="[0-9]+" title="手机号只能输入数字" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> 报名</button>
@@ -91,17 +91,17 @@
                 <i class="bi bi-qr-code me-1"></i> 手机号快速签到
             </div>
             <div class="card-body">
-                <form hx-post="/registrations/checkin_by_phone" hx-target="#regs-container">
+                <form hx-post="/registrations/checkin_by_phone" hx-target="#reg-msg" hx-swap="innerHTML">
                     <input type="hidden" name="course_id" value="{{ course['id'] }}">
                     <div class="row g-2">
                         <div class="col-md-8">
-                            <input type="text" name="member_phone" class="form-control" placeholder="输入会员手机号签到" required>
+                            <input type="text" name="member_phone" class="form-control" placeholder="输入会员手机号签到" required pattern="[0-9]+" title="手机号只能输入数字" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                         </div>
                         <div class="col-md-4 d-flex gap-2">
                             <button type="submit" class="btn btn-success flex-grow-1"><i class="bi bi-check2-circle"></i> 签到</button>
                             {% if course['status'] == 'completed' %}
                             <button type="button" class="btn btn-outline-warning"
-                                    hx-post="/courses/{{ course['id'] }}/process_no_shows" hx-target="#regs-container"
+                                    hx-post="/courses/{{ course['id'] }}/process_no_shows" hx-target="#reg-msg" hx-swap="innerHTML"
                                     hx-confirm="确认批量标记未签到会员为失约？">
                                 <i class="bi bi-person-x"></i> 失约
                             </button>
@@ -113,6 +113,7 @@
         </div>
     </div>
 </div>
+<div id="reg-msg"></div>
 <div id="regs-container">
     {% include 'courses/detail_registrations.html' %}
 </div>

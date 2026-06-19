@@ -1,3 +1,4 @@
+import re
 from config import (
     query_one, query_all, execute, execute_returning, generate_code,
     get_db_connection, get_db_cursor, CLASS_DURATION_MINUTES
@@ -94,6 +95,8 @@ def create_registration(course_id, member_name, member_phone):
         return None, "请输入会员姓名"
     if not member_phone:
         return None, "请输入手机号"
+    if not re.match(r'^\d+$', member_phone):
+        return None, "手机号只能输入数字"
 
     course = course_module.get_course(course_id)
     if not course:
@@ -197,6 +200,8 @@ def checkin_registration(reg_id):
 
 
 def checkin_by_phone(course_id, member_phone):
+    if not member_phone or not re.match(r'^\d+$', member_phone):
+        return None, "手机号只能输入数字"
     reg = query_one("""
         SELECT * FROM registrations
         WHERE course_id = %s AND member_phone = %s AND status NOT IN ('dropped')

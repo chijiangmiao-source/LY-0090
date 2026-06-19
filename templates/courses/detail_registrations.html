@@ -45,18 +45,18 @@
                             </td>
                             <td class="pe-3 text-end">
                                 {% if r['status'] in ['registered'] %}
-                                <button class="btn btn-sm btn-success" hx-post="/registrations/{{ r['id'] }}/checkin" hx-target="#regs-container">
+                                <button class="btn btn-sm btn-success" hx-post="/registrations/{{ r['id'] }}/checkin" hx-target="#reg-msg" hx-swap="innerHTML">
                                     <i class="bi bi-check2"></i> 签到
                                 </button>
                                 {% endif %}
                                 {% if r['status'] in ['registered', 'waitlist'] %}
-                                <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#regs-container"
+                                <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#reg-msg" hx-swap="innerHTML"
                                         hx-confirm="确认办理退课/冻结？">
                                     <i class="bi bi-x-lg"></i> 退课
                                 </button>
                                 {% endif %}
                                 {% if r['status'] == 'registered' and course['status'] == 'completed' %}
-                                <button class="btn btn-sm btn-outline-danger" hx-post="/registrations/{{ r['id'] }}/no_show" hx-target="#regs-container"
+                                <button class="btn btn-sm btn-outline-danger" hx-post="/registrations/{{ r['id'] }}/no_show" hx-target="#reg-msg" hx-swap="innerHTML"
                                         hx-confirm="确认标记为失约？">
                                     <i class="bi bi-person-x"></i> 失约
                                 </button>
@@ -97,12 +97,12 @@
                             <td><small class="text-monospace">{{ r['member_phone'] }}</small></td>
                             <td class="pe-3 text-end">
                                 {% if normal_count < course['max_students'] %}
-                                <button class="btn btn-sm btn-primary" hx-post="/registrations/{{ r['id'] }}/promote" hx-target="#regs-container"
+                                <button class="btn btn-sm btn-primary" hx-post="/registrations/{{ r['id'] }}/promote" hx-target="#reg-msg" hx-swap="innerHTML"
                                         hx-confirm="确认将该会员手动转正？">
                                     <i class="bi bi-arrow-up"></i>
                                 </button>
                                 {% endif %}
-                                <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#regs-container"
+                                <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#reg-msg" hx-swap="innerHTML"
                                         hx-confirm="确认让该会员退出候补？">
                                     <i class="bi bi-x-lg"></i>
                                 </button>
