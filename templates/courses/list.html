@@ -68,6 +68,7 @@
             </thead>
             <tbody id="course-list">
                 {% for c in courses %}
+                    {% set course = c %}
                     {% include 'courses/_row.html' %}
                 {% endfor %}
             </tbody>
