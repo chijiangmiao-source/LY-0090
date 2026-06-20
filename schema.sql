@@ -80,6 +80,34 @@ CREATE TABLE IF NOT EXISTS waitlist_history (
     notes TEXT
 );
 
+CREATE TABLE IF NOT EXISTS blacklist (
+    id SERIAL PRIMARY KEY,
+    member_phone VARCHAR(20) NOT NULL,
+    member_name VARCHAR(100),
+    reason TEXT NOT NULL,
+    start_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP,
+    is_auto BOOLEAN NOT NULL DEFAULT FALSE,
+    no_show_count INTEGER DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_blacklist_member_phone ON blacklist(member_phone);
+CREATE INDEX IF NOT EXISTS idx_blacklist_status ON blacklist(status);
+
+CREATE TABLE IF NOT EXISTS system_config (
+    key VARCHAR(50) PRIMARY KEY,
+    value TEXT NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO system_config (key, value, description) VALUES
+    ('no_show_threshold', '3', '失约次数达到该阈值自动加入限制名单')
+ON CONFLICT DO NOTHING;
+
 INSERT INTO stores (name, address, phone) VALUES
     ('总店', '北京市朝阳区健身路1号', '010-12345678'),
     ('分店A', '北京市海淀区运动街88号', '010-87654321')

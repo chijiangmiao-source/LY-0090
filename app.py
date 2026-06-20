@@ -11,6 +11,7 @@ import stores as store_module
 import courses as course_module
 import registrations as reg_module
 import stats as stats_module
+import blacklist as blacklist_module
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -93,6 +94,10 @@ def make_app():
             return
         try:
             course_module.update_course_status_auto()
+        except Exception:
+            pass
+        try:
+            blacklist_module.auto_expire_blacklist()
         except Exception:
             pass
 
@@ -504,10 +509,120 @@ def make_app():
         no_show_rank = stats_module.get_member_no_show_ranking(store_id_int, date_from, date_to)
         course_stats = stats_module.get_course_stats_list(store_id_int, date_from, date_to)
         store_comp = stats_module.get_store_comparison(date_from, date_to)
+        blacklist_stats = blacklist_module.get_blacklist_stats(store_id_int, date_from, date_to)
         all_stores = store_module.list_stores()
         return render('stats/index', overall=overall, no_show_rank=no_show_rank,
                       course_stats=course_stats, store_comp=store_comp, stores=all_stores,
-                      selected_store=store_id_int, date_from=date_from_str, date_to=date_to_str)
+                      selected_store=store_id_int, date_from=date_from_str, date_to=date_to_str,
+                      blacklist_stats=blacklist_stats)
+
+    @_app.route('/blacklist')
+    @auth.require_login
+    def list_blacklist():
+        status = request.query.get('status', '')
+        phone = request.query.get('member_phone', '').strip()
+        status_val = status if status else None
+        phone_val = phone if phone else None
+        entries = blacklist_module.list_blacklist(status_val, phone_val)
+        threshold = blacklist_module.get_no_show_threshold()
+        return render('blacklist/list', entries=entries, threshold=threshold,
+                      selected_status=status, phone=phone)
+
+    @_app.route('/blacklist/create', method=['GET', 'POST'])
+    @auth.require_login
+    def create_blacklist():
+        if request.method == 'POST':
+            member_phone = request.forms.get('member_phone', '').strip()
+            member_name = request.forms.get('member_name', '').strip() or None
+            reason = request.forms.get('reason', '').strip()
+            start_time = request.forms.get('start_time', '').strip() or None
+            end_time = request.forms.get('end_time', '').strip() or None
+            entry, err = blacklist_module.create_blacklist(member_phone, reason, start_time, end_time, member_name)
+            if request.headers.get('HX-Request'):
+                if err:
+                    return f'<div class="alert alert-danger">{err}</div>'
+                return _render_blacklist_row(entry)
+            entries = blacklist_module.list_blacklist()
+            threshold = blacklist_module.get_no_show_threshold()
+            return render('blacklist/list', entries=entries, threshold=threshold,
+                          selected_status='', phone='')
+        return render('blacklist/form', entry=None, error=None)
+
+    @_app.route('/blacklist/<blacklist_id:int>/edit', method=['GET', 'POST'])
+    @auth.require_login
+    def edit_blacklist(blacklist_id):
+        entry = blacklist_module.get_blacklist(blacklist_id)
+        if not entry:
+            abort(404)
+        if request.method == 'POST':
+            member_name = request.forms.get('member_name', '').strip() or None
+            reason = request.forms.get('reason', '').strip() or None
+            start_time = request.forms.get('start_time', '').strip() or None
+            end_time = request.forms.get('end_time', '').strip() or None
+            updated, err = blacklist_module.update_blacklist(blacklist_id, reason, start_time, end_time, member_name)
+            if request.headers.get('HX-Request'):
+                if err:
+                    return f'<div class="alert alert-danger">{err}</div>'
+                return _render_blacklist_row(updated)
+            entries = blacklist_module.list_blacklist()
+            threshold = blacklist_module.get_no_show_threshold()
+            return render('blacklist/list', entries=entries, threshold=threshold,
+                          selected_status='', phone='')
+        return render('blacklist/form', entry=entry, error=None)
+
+    @_app.route('/blacklist/<blacklist_id:int>/lift', method=['POST'])
+    @auth.require_login
+    def lift_blacklist(blacklist_id):
+        entry, err = blacklist_module.lift_blacklist(blacklist_id)
+        if request.headers.get('HX-Request'):
+            if err:
+                return f'<div class="alert alert-danger">{err}</div>'
+            return _render_blacklist_row(entry)
+        entries = blacklist_module.list_blacklist()
+        threshold = blacklist_module.get_no_show_threshold()
+        return render('blacklist/list', entries=entries, threshold=threshold,
+                      selected_status='', phone='')
+
+    @_app.route('/blacklist/<blacklist_id:int>/delete', method=['POST'])
+    @auth.require_login
+    def delete_blacklist(blacklist_id):
+        success, err = blacklist_module.delete_blacklist(blacklist_id)
+        if request.headers.get('HX-Request'):
+            if err:
+                return f'<div class="alert alert-danger">{err}</div>'
+            return ''
+        entries = blacklist_module.list_blacklist()
+        threshold = blacklist_module.get_no_show_threshold()
+        return render('blacklist/list', entries=entries, threshold=threshold,
+                      selected_status='', phone='')
+
+    @_app.route('/blacklist/threshold', method=['POST'])
+    @auth.require_login
+    def update_threshold():
+        threshold = request.forms.get('threshold', '').strip()
+        result, err = blacklist_module.update_no_show_threshold(threshold)
+        if request.headers.get('HX-Request'):
+            if err:
+                return f'<div class="alert alert-danger">{err}</div>'
+            return f'<div class="alert alert-success">失约阈值已更新为 {result} 次</div>'
+        entries = blacklist_module.list_blacklist()
+        threshold_val = blacklist_module.get_no_show_threshold()
+        return render('blacklist/list', entries=entries, threshold=threshold_val,
+                      selected_status='', phone='')
+
+    @_app.route('/blacklist/check', method=['POST'])
+    @auth.require_login
+    def check_blacklist():
+        member_phone = request.forms.get('member_phone', '').strip()
+        if not member_phone:
+            return '<div class="alert alert-warning">请输入手机号</div>'
+        blacklisted, bl_entry = blacklist_module.is_member_blacklisted(member_phone)
+        if blacklisted:
+            end_time = bl_entry['end_time']
+            end_info = f"，限制至{end_time.strftime('%Y-%m-%d %H:%M')}" if end_time else "，无结束时间"
+            reason = bl_entry['reason']
+            return f'<div class="alert alert-danger"><i class="bi bi-shield-exclamation me-1"></i>该会员在黑名单中（原因：{reason}{end_info}）</div>'
+        return '<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>该会员不在黑名单中</div>'
 
     @_app.error(404)
     def error404(error):
@@ -547,6 +662,11 @@ def _render_course_row(course):
     tpl = env.get_template('courses/_row.html')
     return tpl.render(course=course, normal_count=normal_count, waitlist_count=waitlist_count,
                       datetime=format_datetime, status_text=get_status_text, status_class=get_status_class)
+
+
+def _render_blacklist_row(entry):
+    tpl = env.get_template('blacklist/_row.html')
+    return tpl.render(entry=entry, datetime=format_datetime)
 
 
 if __name__ == '__main__':

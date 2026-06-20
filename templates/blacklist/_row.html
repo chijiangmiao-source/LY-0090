@@ -1,0 +1,34 @@
+<tr id="bl-row-{{ entry['id'] }}">
+    <td class="ps-3 fw-medium">{{ entry['member_name'] or '-' }}</td>
+    <td><span class="text-monospace small">{{ entry['member_phone'] }}</span></td>
+    <td><small>{{ entry['reason'] }}</small></td>
+    <td><small>{{ entry['start_time']|datetime }}</small></td>
+    <td><small>{{ entry['end_time']|datetime if entry['end_time'] else '永久' }}</small></td>
+    <td>
+        {% if entry['is_auto'] %}
+        <span class="badge bg-warning text-dark">自动</span>
+        {% else %}
+        <span class="badge bg-info">手动</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if entry['status'] == 'active' %}
+        <span class="badge bg-danger rounded-pill">生效中</span>
+        {% else %}
+        <span class="badge bg-secondary rounded-pill">已解除</span>
+        {% endif %}
+    </td>
+    <td class="pe-3 text-end">
+        {% if entry['status'] == 'active' %}
+        <button class="btn btn-sm btn-outline-success" hx-post="/blacklist/{{ entry['id'] }}/lift" hx-target="#bl-row-{{ entry['id'] }}" hx-swap="outerHTML"
+                hx-confirm="确认解除该会员的黑名单限制？">
+            <i class="bi bi-unlock"></i> 解除
+        </button>
+        {% endif %}
+        <a href="/blacklist/{{ entry['id'] }}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+        <button class="btn btn-sm btn-outline-danger" hx-post="/blacklist/{{ entry['id'] }}/delete" hx-target="#bl-row-{{ entry['id'] }}" hx-swap="outerHTML"
+                hx-confirm="确认删除该黑名单记录？">
+            <i class="bi bi-trash"></i>
+        </button>
+    </td>
+</tr>

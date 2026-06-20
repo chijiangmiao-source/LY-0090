@@ -6,6 +6,7 @@ from config import (
 from utils import is_time_conflict
 from datetime import datetime
 import courses as course_module
+import blacklist as blacklist_module
 
 
 def get_registration(reg_id):
@@ -108,6 +109,11 @@ def create_registration(course_id, member_name, member_phone):
 
     now = datetime.now()
 
+    blacklisted, bl_entry = blacklist_module.is_member_blacklisted(member_phone)
+    if blacklisted:
+        end_info = f"，限制至{bl_entry['end_time'].strftime('%Y-%m-%d %H:%M')}" if bl_entry['end_time'] else "，限制未设结束时间"
+        return None, f"该会员在黑名单中（原因：{bl_entry['reason']}{end_info}）"
+
     existing = check_member_already_registered(course_id, member_phone)
     if existing:
         status_text = "候补" if existing['is_waitlist'] else "报名"
@@ -179,6 +185,11 @@ def checkin_registration(reg_id):
         return None, "该会员已退课"
     if reg['status'] == 'frozen':
         return None, "该报名已冻结"
+
+    blacklisted, bl_entry = blacklist_module.is_member_blacklisted(reg['member_phone'])
+    if blacklisted:
+        end_info = f"，限制至{bl_entry['end_time'].strftime('%Y-%m-%d %H:%M')}" if bl_entry['end_time'] else ""
+        return None, f"该会员在黑名单中，无法签到（原因：{bl_entry['reason']}{end_info}）"
 
     course = course_module.get_course(reg['course_id'])
     now = datetime.now()
@@ -401,6 +412,7 @@ def mark_no_show(reg_id):
         WHERE id = %s AND status IN ('registered')
     """, ('no_show', now, reg_id))
     if result > 0:
+        blacklist_module.check_and_auto_blacklist(reg['member_phone'], reg['member_name'])
         return get_registration(reg_id), "已标记为失约"
     return None, "标记失败"
 
@@ -412,9 +424,17 @@ def process_no_shows_for_course(course_id):
     now = datetime.now()
     if now < course['end_time']:
         return 0
+    affected_phones = query_all("""
+        SELECT DISTINCT member_phone, member_name FROM registrations
+        WHERE course_id = %s AND status = 'registered' AND is_waitlist = FALSE
+          AND checkin_time IS NULL
+    """, (course_id,))
     result = execute("""
         UPDATE registrations SET status = 'no_show', updated_at = %s
         WHERE course_id = %s AND status = 'registered' AND is_waitlist = FALSE
           AND checkin_time IS NULL
     """, (now, course_id))
+    if result > 0:
+        for row in affected_phones:
+            blacklist_module.check_and_auto_blacklist(row['member_phone'], row['member_name'])
     return result

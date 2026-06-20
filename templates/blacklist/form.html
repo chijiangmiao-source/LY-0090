@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{% if entry %}编辑黑名单{% else %}新增黑名单{% endif %}{% endblock %}
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-2">
+            <li class="breadcrumb-item"><a href="/blacklist">会员黑名单</a></li>
+            <li class="breadcrumb-item active">{% if entry %}编辑{% else %}新增{% endif %}</li>
+        </ol>
+    </nav>
+    <h4 class="mb-0">
+        <i class="bi bi-shield-lock me-2"></i>{% if entry %}编辑黑名单{% else %}新增黑名单{% endif %}
+    </h4>
+</div>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">{% if entry %}编辑限制信息{% else %}添加会员到黑名单{% endif %}</div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+                <form {% if entry %}action="/blacklist/{{ entry['id'] }}/edit" method="post"{% else %}hx-post="/blacklist/create" hx-target="closest form"{% endif %}>
+                    {% if not entry %}
+                    <div class="mb-3">
+                        <label class="form-label">手机号 <span class="text-danger">*</span></label>
+                        <input type="text" name="member_phone" class="form-control" placeholder="输入会员手机号" required pattern="[0-9]+" title="手机号只能输入数字" oninput="this.value=this.value.replace(/[^0-9]/g,'')" value="{{ entry['member_phone'] if entry else '' }}">
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">会员姓名</label>
+                        <input type="text" name="member_name" class="form-control" placeholder="会员姓名（可选，留空自动查询）" value="{{ entry['member_name'] if entry else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">黑名单原因 <span class="text-danger">*</span></label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="请输入加入黑名单的原因" required>{{ entry['reason'] if entry else '' }}</textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">生效时间</label>
+                            <input type="datetime-local" name="start_time" class="form-control"
+                                   value="{% if entry and entry['start_time'] %}{{ entry['start_time'].strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                            <small class="text-muted">留空则立即生效</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">失效时间</label>
+                            <input type="datetime-local" name="end_time" class="form-control"
+                                   value="{% if entry and entry['end_time'] %}{{ entry['end_time'].strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                            <small class="text-muted">留空则永久有效</small>
+                        </div>
+                    </div>
+                    {% if entry and entry['is_auto'] %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-robot me-1"></i> 此记录由系统自动生成（失约{{ entry['no_show_count'] }}次）
+                    </div>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger"><i class="bi bi-shield-lock me-1"></i>{% if entry %}保存修改{% else %}确认加入黑名单{% endif %}</button>
+                        <a href="/blacklist" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
