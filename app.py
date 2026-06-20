@@ -600,11 +600,17 @@ def make_app():
     @auth.require_login
     def update_threshold():
         threshold = request.forms.get('threshold', '').strip()
+        old_threshold = blacklist_module.get_no_show_threshold()
         result, err = blacklist_module.update_no_show_threshold(threshold)
         if request.headers.get('HX-Request'):
             if err:
                 return f'<div class="alert alert-danger">{err}</div>'
-            return f'<div class="alert alert-success">失约阈值已更新为 {result} 次</div>'
+            msg = f'失约阈值已更新为 {result} 次'
+            if result is not None and result < old_threshold:
+                auto_count = blacklist_module.scan_all_members_for_auto_blacklist(result)
+                if auto_count > 0:
+                    msg += f'，已自动限制 {auto_count} 名历史失约会员'
+            return f'<div class="alert alert-success">{msg}</div>'
         entries = blacklist_module.list_blacklist()
         threshold_val = blacklist_module.get_no_show_threshold()
         return render('blacklist/list', entries=entries, threshold=threshold_val,

@@ -96,8 +96,8 @@ def create_registration(course_id, member_name, member_phone):
         return None, "请输入会员姓名"
     if not member_phone:
         return None, "请输入手机号"
-    if not re.match(r'^\d+$', member_phone):
-        return None, "手机号只能输入数字"
+    if not re.match(r'^1\d{10}$', member_phone):
+        return None, "请输入有效的11位手机号"
 
     course = course_module.get_course(course_id)
     if not course:
@@ -211,8 +211,8 @@ def checkin_registration(reg_id):
 
 
 def checkin_by_phone(course_id, member_phone):
-    if not member_phone or not re.match(r'^\d+$', member_phone):
-        return None, "手机号只能输入数字"
+    if not member_phone or not re.match(r'^1\d{10}$', member_phone):
+        return None, "请输入有效的11位手机号"
     reg = query_one("""
         SELECT * FROM registrations
         WHERE course_id = %s AND member_phone = %s AND status NOT IN ('dropped')

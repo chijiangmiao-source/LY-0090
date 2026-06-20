@@ -36,6 +36,9 @@ def list_blacklist(status=None, member_phone=None):
 def create_blacklist(member_phone, reason, start_time=None, end_time=None, member_name=None):
     if not member_phone:
         return None, "请输入手机号"
+    import re
+    if not re.match(r'^1\d{10}$', member_phone):
+        return None, "请输入有效的11位手机号"
     if not reason:
         return None, "请输入黑名单原因"
 
@@ -175,6 +178,8 @@ def update_no_show_threshold(threshold):
     if threshold < 1:
         return None, "阈值必须大于0"
 
+    old_threshold = get_no_show_threshold()
+
     result = execute("""
         INSERT INTO system_config (key, value, description, updated_at)
         VALUES (%s, %s, %s, %s)
@@ -182,8 +187,41 @@ def update_no_show_threshold(threshold):
     """, ('no_show_threshold', str(threshold), '失约次数达到该阈值自动加入限制名单',
           datetime.now(), str(threshold), datetime.now()))
     if result > 0 or result == 0:
+        if threshold < old_threshold:
+            scan_all_members_for_auto_blacklist(threshold)
         return threshold, None
     return None, "更新失败"
+
+
+def scan_all_members_for_auto_blacklist(threshold=None):
+    if threshold is None:
+        threshold = get_no_show_threshold()
+
+    members = query_all("""
+        SELECT r.member_phone,
+               MAX(r.member_name) as member_name,
+               COUNT(*) as no_show_count
+        FROM registrations r
+        WHERE r.status = 'no_show'
+        GROUP BY r.member_phone
+        HAVING COUNT(*) >= %s
+    """, (threshold,))
+
+    count = 0
+    for m in members:
+        existing, _ = is_member_blacklisted(m['member_phone'])
+        if not existing:
+            from datetime import timedelta
+            start_time = datetime.now()
+            end_time = start_time + timedelta(days=30)
+            execute_returning("""
+                INSERT INTO blacklist (member_phone, member_name, reason, start_time, end_time, is_auto, no_show_count, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *
+            """, (m['member_phone'], m['member_name'],
+                  f"累计失约{m['no_show_count']}次，达到阈值{threshold}次，自动限制报名（阈值调低触发）",
+                  start_time, end_time, True, m['no_show_count'], 'active'))
+            count += 1
+    return count
 
 
 def check_and_auto_blacklist(member_phone, member_name=None):
@@ -231,22 +269,36 @@ def get_blacklist_stats(store_id=None, date_from=None, date_to=None):
     if date_to:
         where_clauses.append("b.created_at <= %s")
         params.append(date_to)
+
+    store_filter_sql = ""
+    store_params = []
+    if store_id:
+        store_filter_sql = """
+            AND b.member_phone IN (
+                SELECT DISTINCT r.member_phone FROM registrations r
+                JOIN courses c ON r.course_id = c.id
+                WHERE c.store_id = %s
+            )
+        """
+        store_params = [store_id]
+
     where_sql = " AND ".join(where_clauses)
+    all_params = tuple(params + store_params)
 
     total_active = query_one("""
         SELECT COUNT(*) as cnt FROM blacklist b
-        WHERE {where} AND status = 'active' AND start_time <= NOW() AND (end_time IS NULL OR end_time > NOW())
-    """.format(where=where_sql), tuple(params))['cnt']
+        WHERE {where} {store_filter} AND status = 'active' AND start_time <= NOW() AND (end_time IS NULL OR end_time > NOW())
+    """.format(where=where_sql, store_filter=store_filter_sql), all_params)['cnt']
 
     auto_count = query_one("""
         SELECT COUNT(*) as cnt FROM blacklist b
-        WHERE {where} AND is_auto = TRUE
-    """.format(where=where_sql), tuple(params))['cnt']
+        WHERE {where} {store_filter} AND is_auto = TRUE
+    """.format(where=where_sql, store_filter=store_filter_sql), all_params)['cnt']
 
     lifted_count = query_one("""
         SELECT COUNT(*) as cnt FROM blacklist b
-        WHERE {where} AND status = 'lifted'
-    """.format(where=where_sql), tuple(params))['cnt']
+        WHERE {where} {store_filter} AND status = 'lifted'
+    """.format(where=where_sql, store_filter=store_filter_sql), all_params)['cnt']
 
     return {
         'total_active': total_active,
