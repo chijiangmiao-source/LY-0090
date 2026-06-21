@@ -17,6 +17,7 @@
                             <th>手机号</th>
                             <th>报名时间</th>
                             <th>签到/退课</th>
+                            <th>扣课</th>
                             <th>状态</th>
                             <th class="pe-3 text-end">操作</th>
                         </tr>
@@ -43,6 +44,15 @@
                                 {% endif %}
                                 <span class="badge {{ r['status']|status_class }} rounded-pill">{{ r['status']|status_text }}</span>
                             </td>
+                            <td>
+                                {% if reg_deductions and reg_deductions.get(r['id']) %}
+                                {% for d in reg_deductions[r['id']] %}
+                                <span class="badge {{ d['deduction_type']|deduction_type_class }} me-1">{{ d['deduction_type']|deduction_type_text }}</span>
+                                {% endfor %}
+                                {% else %}
+                                <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
                             <td class="pe-3 text-end">
                                 {% if r['status'] in ['registered'] %}
                                 <button class="btn btn-sm btn-success" hx-post="/registrations/{{ r['id'] }}/checkin" hx-target="#reg-msg" hx-swap="innerHTML">
@@ -65,7 +75,7 @@
                         </tr>
                         {% endfor %}
                         {% if not normal_regs %}
-                        <tr><td colspan="7" class="text-center py-4 text-muted">暂无报名记录</td></tr>
+                        <tr><td colspan="8" class="text-center py-4 text-muted">暂无报名记录</td></tr>
                         {% endif %}
                     </tbody>
                 </table>

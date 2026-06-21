@@ -97,6 +97,41 @@ CREATE TABLE IF NOT EXISTS blacklist (
 CREATE INDEX IF NOT EXISTS idx_blacklist_member_phone ON blacklist(member_phone);
 CREATE INDEX IF NOT EXISTS idx_blacklist_status ON blacklist(status);
 
+CREATE TABLE IF NOT EXISTS member_packages (
+    id SERIAL PRIMARY KEY,
+    package_code VARCHAR(50) UNIQUE NOT NULL,
+    member_phone VARCHAR(20) NOT NULL,
+    member_name VARCHAR(100),
+    package_name VARCHAR(100) NOT NULL,
+    package_type VARCHAR(20) NOT NULL,
+    store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL,
+    total_count INTEGER NOT NULL DEFAULT 0,
+    remaining_count INTEGER NOT NULL DEFAULT 0,
+    reserved_count INTEGER NOT NULL DEFAULT 0,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_member_packages_member_phone ON member_packages(member_phone);
+CREATE INDEX IF NOT EXISTS idx_member_packages_status ON member_packages(status);
+CREATE INDEX IF NOT EXISTS idx_member_packages_end_time ON member_packages(end_time);
+
+CREATE TABLE IF NOT EXISTS course_deductions (
+    id SERIAL PRIMARY KEY,
+    registration_id INTEGER NOT NULL REFERENCES registrations(id) ON DELETE CASCADE,
+    package_id INTEGER NOT NULL REFERENCES member_packages(id) ON DELETE CASCADE,
+    deduction_type VARCHAR(20) NOT NULL,
+    count INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_deductions_registration_id ON course_deductions(registration_id);
+CREATE INDEX IF NOT EXISTS idx_course_deductions_package_id ON course_deductions(package_id);
+
 CREATE TABLE IF NOT EXISTS system_config (
     key VARCHAR(50) PRIMARY KEY,
     value TEXT NOT NULL,

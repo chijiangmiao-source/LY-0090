@@ -100,7 +100,7 @@
     </div>
 </div>
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-start border-4 border-dark">
             <div class="card-body">
                 <div class="small text-muted mb-1"><i class="bi bi-shield-lock me-1"></i>当前限制人数</div>
@@ -111,7 +111,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-start border-4 border-warning">
             <div class="card-body">
                 <div class="small text-muted mb-1"><i class="bi bi-robot me-1"></i>自动限制次数</div>
@@ -122,13 +122,76 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card border-start border-4 border-info">
             <div class="card-body">
                 <div class="small text-muted mb-1"><i class="bi bi-unlock me-1"></i>解除限制次数</div>
                 <div class="d-flex align-items-end gap-2">
                     <span class="fs-1 fw-bold text-info">{{ blacklist_stats['lifted_count'] }}</span>
                     <span class="text-muted">次</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="small text-muted mb-1"><i class="bi bi-exclamation-triangle me-1"></i>异常扣课次数</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-danger">{{ package_stats['abnormal_count'] }}</span>
+                    <span class="text-muted">次</span>
+                </div>
+                <small class="text-muted">冻结退课/失约扣课</small>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-success">
+            <div class="card-body">
+                <div class="small text-muted mb-1"><i class="bi bi-credit-card-2-front me-1"></i>生效套餐数</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-success">{{ package_stats['total_active'] }}</span>
+                    <span class="text-muted">个</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="small text-muted mb-1"><i class="bi bi-check2-circle me-1"></i>正式扣课次数</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-primary">{{ package_stats['total_deductions'] }}</span>
+                    <span class="text-muted">次</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-info">
+            <div class="card-body">
+                <div class="small text-muted mb-1"><i class="bi bi-hourglass-split me-1"></i>预占课次</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold text-info">{{ package_stats['total_pre_deducts'] }}</span>
+                    <span class="text-muted">次</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-secondary">
+            <div class="card-body">
+                <div class="small text-muted mb-1"><i class="bi bi-arrow-counterclockwise me-1"></i>套餐消耗率</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-1 fw-bold">{{ package_stats['consumption_rate'] }}%</span>
+                </div>
+                <div class="mt-1 small text-muted">
+                    已用 {{ package_stats['total_total'] - package_stats['total_remaining'] }} / 总计 {{ package_stats['total_total'] }}
+                </div>
+                <div class="progress mt-1">
+                    <div class="progress-bar bg-secondary" style="width:{{ package_stats['consumption_rate'] }}%"></div>
                 </div>
             </div>
         </div>

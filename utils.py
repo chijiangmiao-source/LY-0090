@@ -81,5 +81,52 @@ def calculate_end_time(start_time, duration_minutes):
     return start_time + timedelta(minutes=duration_minutes)
 
 
+def get_package_type_text(package_type):
+    type_map = {
+        'count': '次卡',
+        'period': '周期卡',
+        'single_store': '单店卡',
+    }
+    return type_map.get(package_type, package_type)
+
+
+def get_package_status_text(status):
+    status_map = {
+        'active': '生效中',
+        'expired': '已过期',
+        'exhausted': '已用完',
+        'cancelled': '已取消',
+    }
+    return status_map.get(status, status)
+
+
+def get_package_status_class(status):
+    class_map = {
+        'active': 'bg-success',
+        'expired': 'bg-secondary',
+        'exhausted': 'bg-warning text-dark',
+        'cancelled': 'bg-danger',
+    }
+    return class_map.get(status, 'bg-secondary')
+
+
+def get_deduction_type_text(deduction_type):
+    type_map = {
+        'pre_deduct': '预占',
+        'formal_deduct': '正式扣课',
+        'return': '返还',
+    }
+    return type_map.get(deduction_type, deduction_type)
+
+
+def get_deduction_type_class(deduction_type):
+    class_map = {
+        'pre_deduct': 'bg-info',
+        'formal_deduct': 'bg-success',
+        'return': 'bg-warning text-dark',
+    }
+    return class_map.get(deduction_type, 'bg-secondary')
+
+
 def is_time_conflict(start1, end1, start2, end2):
     return start1 < end2 and start2 < end1

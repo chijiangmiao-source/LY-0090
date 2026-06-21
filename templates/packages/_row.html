@@ -1,0 +1,45 @@
+<tr id="pkg-row-{{ pkg['id'] }}">
+    <td class="ps-3"><small class="fw-mono text-muted">{{ pkg['package_code'] }}</small></td>
+    <td>
+        <div class="fw-medium">{{ pkg['member_name'] or '-' }}</div>
+        <small class="text-monospace text-muted">{{ pkg['member_phone'] }}</small>
+    </td>
+    <td class="fw-medium">{{ pkg['package_name'] }}</td>
+    <td>
+        {% if pkg['package_type'] == 'count' %}
+        <span class="badge bg-info">次卡</span>
+        {% elif pkg['package_type'] == 'period' %}
+        <span class="badge bg-primary">周期卡</span>
+        {% elif pkg['package_type'] == 'single_store' %}
+        <span class="badge bg-warning text-dark">单店卡</span>
+        {% endif %}
+    </td>
+    <td><small>{{ pkg['store_name'] or '全店通用' }}</small></td>
+    <td class="text-center">{{ pkg['total_count'] }}</td>
+    <td class="text-center">
+        <span class="fw-bold {% if pkg['remaining_count'] <= 2 and pkg['status'] == 'active' %}text-danger{% elif pkg['remaining_count'] <= 5 and pkg['status'] == 'active' %}text-warning{% endif %}">{{ pkg['remaining_count'] }}</span>
+    </td>
+    <td class="text-center">
+        {% if pkg['reserved_count'] > 0 %}
+        <span class="badge bg-info">{{ pkg['reserved_count'] }}</span>
+        {% else %}
+        <span class="text-muted">0</span>
+        {% endif %}
+    </td>
+    <td>
+        <small>{{ pkg['start_time']|date }} ~ {{ pkg['end_time']|date }}</small>
+    </td>
+    <td>
+        <span class="badge {{ pkg['status']|package_status_class }} rounded-pill">{{ pkg['status']|package_status_text }}</span>
+    </td>
+    <td class="pe-3 text-end">
+        <a href="/packages/{{ pkg['id'] }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+        {% if pkg['status'] == 'active' %}
+        <a href="/packages/{{ pkg['id'] }}/edit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+        <button class="btn btn-sm btn-outline-danger" hx-post="/packages/{{ pkg['id'] }}/cancel" hx-target="#pkg-row-{{ pkg['id'] }}" hx-swap="outerHTML"
+                hx-confirm="确认取消该套餐？取消后不可恢复。">
+            <i class="bi bi-x-circle"></i>
+        </button>
+        {% endif %}
+    </td>
+</tr>

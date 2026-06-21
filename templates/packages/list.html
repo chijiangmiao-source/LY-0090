@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}会员套餐管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-credit-card-2-front me-2"></i>会员套餐管理</h4>
+        <small class="text-muted">为会员开通课包、管理套餐与扣课</small>
+    </div>
+    <a href="/packages/create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>开通套餐</a>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-success">
+            <div class="card-body">
+                <div class="small text-muted mb-1">生效中套餐</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-success">{{ packages | selectattr('status', 'equalto', 'active') | list | length }}</span>
+                    <span class="text-muted">个</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="small text-muted mb-1">已用完</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-warning">{{ packages | selectattr('status', 'equalto', 'exhausted') | list | length }}</span>
+                    <span class="text-muted">个</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-secondary">
+            <div class="card-body">
+                <div class="small text-muted mb-1">已过期</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-secondary">{{ packages | selectattr('status', 'equalto', 'expired') | list | length }}</span>
+                    <span class="text-muted">个</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-info">
+            <div class="card-body">
+                <div class="small text-muted mb-1">预占课次</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-info">{{ packages | selectattr('status', 'equalto', 'active') | sum(attribute='reserved_count') }}</span>
+                    <span class="text-muted">次</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">手机号</label>
+                <input type="text" name="member_phone" class="form-control form-control-sm" placeholder="输入手机号查询" value="{{ phone }}" pattern="1\d{10}" maxlength="11" title="请输入有效的11位手机号" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,11)">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">套餐类型</label>
+                <select name="package_type" class="form-select form-select-sm">
+                    <option value="">全部</option>
+                    <option value="count" {% if selected_type == 'count' %}selected{% endif %}>次卡</option>
+                    <option value="period" {% if selected_type == 'period' %}selected{% endif %}>周期卡</option>
+                    <option value="single_store" {% if selected_type == 'single_store' %}selected{% endif %}>单店卡</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">状态</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">全部</option>
+                    <option value="active" {% if selected_status == 'active' %}selected{% endif %}>生效中</option>
+                    <option value="expired" {% if selected_status == 'expired' %}selected{% endif %}>已过期</option>
+                    <option value="exhausted" {% if selected_status == 'exhausted' %}selected{% endif %}>已用完</option>
+                    <option value="cancelled" {% if selected_status == 'cancelled' %}selected{% endif %}>已取消</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">门店</label>
+                <select name="store_id" class="form-select form-select-sm">
+                    <option value="">全部</option>
+                    {% for s in stores %}
+                    <option value="{{ s['id'] }}" {% if selected_store == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-search"></i> 筛选</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">套餐编号</th>
+                    <th>会员</th>
+                    <th>套餐名称</th>
+                    <th>类型</th>
+                    <th>适用门店</th>
+                    <th class="text-center">总次数</th>
+                    <th class="text-center">剩余</th>
+                    <th class="text-center">预占</th>
+                    <th>有效期</th>
+                    <th>状态</th>
+                    <th class="pe-3 text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pkg in packages %}
+                {% include 'packages/_row.html' %}
+                {% endfor %}
+                {% if not packages %}
+                <tr><td colspan="11" class="text-center py-5 text-muted">暂无套餐记录</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

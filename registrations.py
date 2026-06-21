@@ -7,6 +7,7 @@ from utils import is_time_conflict
 from datetime import datetime
 import courses as course_module
 import blacklist as blacklist_module
+import packages as package_module
 
 
 def get_registration(reg_id):
@@ -169,8 +170,23 @@ def create_registration(course_id, member_name, member_phone):
             """, (reg_code, course_id, member_name, member_phone, now, 'registered', False))
             reg = cur.fetchone()
 
+            pkg = package_module.select_available_package(member_phone, course['store_id'], cur)
+            pkg_name = None
+            if pkg:
+                deduction, ded_err = package_module.pre_deduct(reg['id'], pkg['id'], cur)
+                if ded_err:
+                    conn.rollback()
+                    return None, f"报名成功但套餐预占失败：{ded_err}"
+                pkg_name = pkg.get('package_name', '')
+
         conn.commit()
-        return dict(reg), "候补成功" if is_waitlist else "报名成功"
+        msg = "候补成功" if is_waitlist else "报名成功"
+        if not is_waitlist:
+            if pkg_name:
+                msg += f"（已从套餐「{pkg_name}」预占1次）"
+            else:
+                msg += "（该会员暂无可用套餐）"
+        return dict(reg), msg
 
 
 def checkin_registration(reg_id):
@@ -200,14 +216,34 @@ def checkin_registration(reg_id):
         return None, "课程已结束，无法签到"
 
     now = datetime.now()
-    result = execute("""
-        UPDATE registrations SET status = %s, checkin_time = %s, updated_at = %s
-        WHERE id = %s AND status NOT IN ('checked_in', 'dropped', 'frozen')
-    """, ('checked_in', now, now, reg_id))
+    with get_db_connection() as conn:
+        cur = get_db_cursor(conn)
+        cur.execute("""
+            UPDATE registrations SET status = %s, checkin_time = %s, updated_at = %s
+            WHERE id = %s AND status NOT IN ('checked_in', 'dropped', 'frozen')
+            RETURNING *
+        """, ('checked_in', now, now, reg_id))
+        updated = cur.fetchone()
+        if not updated:
+            conn.rollback()
+            return None, "签到失败"
 
-    if result > 0:
-        return get_registration(reg_id), "签到成功"
-    return None, "签到失败"
+        pre_deduction = query_one("""
+            SELECT cd.*, mp.package_name FROM course_deductions cd
+            LEFT JOIN member_packages mp ON cd.package_id = mp.id
+            WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
+            ORDER BY cd.created_at DESC LIMIT 1
+        """, (reg_id,))
+        pkg_info = ""
+        if pre_deduction:
+            _, ded_err = package_module.formal_deduct(reg_id, pre_deduction['package_id'], cur)
+            if not ded_err:
+                pkg_info = f"（已从套餐「{pre_deduction['package_name'] or ''}」正式扣课）"
+            else:
+                pkg_info = f"（正式扣课失败：{ded_err}）"
+
+        conn.commit()
+        return get_registration(reg_id), f"签到成功{pkg_info}"
 
 
 def checkin_by_phone(course_id, member_phone):
@@ -261,6 +297,16 @@ def dropout_registration(reg_id):
             return None, "退课失败，状态可能已变更"
 
         was_normal = not reg['is_waitlist']
+
+        if not is_frozen and was_normal and not reg['is_waitlist']:
+            pre_deduction = query_one("""
+                SELECT cd.*, mp.package_name FROM course_deductions cd
+                LEFT JOIN member_packages mp ON cd.package_id = mp.id
+                WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
+                ORDER BY cd.created_at DESC LIMIT 1
+            """, (reg_id,))
+            if pre_deduction:
+                package_module.return_pre_deduct(reg_id, pre_deduction['package_id'], cur, "正常退课返还预占课次")
 
         if reg['is_waitlist'] and reg['status'] == 'waitlist':
             cur.execute("""
@@ -413,7 +459,21 @@ def mark_no_show(reg_id):
     """, ('no_show', now, reg_id))
     if result > 0:
         blacklist_module.check_and_auto_blacklist(reg['member_phone'], reg['member_name'])
-        return get_registration(reg_id), "已标记为失约"
+        pre_deduction = query_one("""
+            SELECT cd.*, mp.package_name, mp.remaining_count, mp.reserved_count FROM course_deductions cd
+            LEFT JOIN member_packages mp ON cd.package_id = mp.id
+            WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
+            ORDER BY cd.created_at DESC LIMIT 1
+        """, (reg_id,))
+        pkg_info = ""
+        if pre_deduction:
+            with get_db_connection() as conn:
+                cur = get_db_cursor(conn)
+                _, ded_err = package_module.formal_deduct(reg_id, pre_deduction['package_id'], cur)
+                if not ded_err:
+                    pkg_info = f"（套餐「{pre_deduction['package_name'] or ''}」已扣课，失约不返还）"
+                conn.commit()
+        return get_registration(reg_id), f"已标记为失约{pkg_info}"
     return None, "标记失败"
 
 
@@ -437,4 +497,20 @@ def process_no_shows_for_course(course_id):
     if result > 0:
         for row in affected_phones:
             blacklist_module.check_and_auto_blacklist(row['member_phone'], row['member_name'])
+        no_show_regs = query_all("""
+            SELECT id FROM registrations
+            WHERE course_id = %s AND status = 'no_show' AND is_waitlist = FALSE
+              AND checkin_time IS NULL
+        """, (course_id,))
+        for nsr in no_show_regs:
+            pre_deduction = query_one("""
+                SELECT cd.package_id FROM course_deductions cd
+                WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
+                ORDER BY cd.created_at DESC LIMIT 1
+            """, (nsr['id'],))
+            if pre_deduction:
+                with get_db_connection() as conn:
+                    cur = get_db_cursor(conn)
+                    package_module.formal_deduct(nsr['id'], pre_deduction['package_id'], cur)
+                    conn.commit()
     return result
