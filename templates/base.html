@@ -28,6 +28,11 @@
         .htmx-request.htmx-indicator { display: inline; }
         table th { font-size: 0.875rem; color: #6c757d; font-weight: 600; }
         table td { vertical-align: middle; }
+        .bg-purple { background-color: #6f42c1 !important; }
+        .btn-outline-purple { color: #6f42c1; border-color: #6f42c1; }
+        .btn-outline-purple:hover { background-color: #6f42c1; color: #fff; }
+        .alert-purple { color: #6f42c1; background-color: #f0e7f5; border-color: #d4b8e8; }
+        .border-purple { border-color: #6f42c1 !important; }
     </style>
 </head>
 <body>
@@ -50,6 +55,9 @@
                 </a>
                 <a class="nav-link {% if '/packages' in request.path %}active{% endif %}" href="/packages">
                     <i class="bi bi-credit-card-2-front"></i> 会员套餐
+                </a>
+                <a class="nav-link {% if '/vouchers' in request.path %}active{% endif %}" href="/vouchers">
+                    <i class="bi bi-ticket-perforated"></i> 补课券管理
                 </a>
                 <a class="nav-link {% if '/stats' in request.path %}active{% endif %}" href="/stats">
                     <i class="bi bi-bar-chart"></i> 数据统计

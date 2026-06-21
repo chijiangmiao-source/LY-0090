@@ -548,6 +548,7 @@ def get_deduction_type_text(deduction_type):
         'pre_deduct': '预占',
         'formal_deduct': '正式扣课',
         'return': '返还',
+        'voucher_deduct': '补课券抵扣',
     }
     return type_map.get(deduction_type, deduction_type)
 
@@ -557,5 +558,6 @@ def get_deduction_type_class(deduction_type):
         'pre_deduct': 'bg-info',
         'formal_deduct': 'bg-success',
         'return': 'bg-warning text-dark',
+        'voucher_deduct': 'bg-purple',
     }
     return class_map.get(deduction_type, 'bg-secondary')

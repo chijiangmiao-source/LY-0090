@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 from config import SECRET_KEY
-from utils import format_datetime, format_date, format_time, get_status_text, get_status_class, get_package_type_text, get_package_status_text, get_package_status_class, get_deduction_type_text, get_deduction_type_class
+from utils import format_datetime, format_date, format_time, get_status_text, get_status_class, get_package_type_text, get_package_status_text, get_package_status_class, get_deduction_type_text, get_deduction_type_class, get_voucher_status_text, get_voucher_status_class
 import auth
 import stores as store_module
 import courses as course_module
@@ -13,6 +13,7 @@ import registrations as reg_module
 import stats as stats_module
 import blacklist as blacklist_module
 import packages as package_module
+import vouchers as voucher_module
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +36,8 @@ env.filters['package_status_text'] = get_package_status_text
 env.filters['package_status_class'] = get_package_status_class
 env.filters['deduction_type_text'] = get_deduction_type_text
 env.filters['deduction_type_class'] = get_deduction_type_class
+env.filters['voucher_status_text'] = get_voucher_status_text
+env.filters['voucher_status_class'] = get_voucher_status_class
 
 
 def render(tpl_name, **kwargs):
@@ -61,7 +64,7 @@ def render_detail_registrations(course_id, prefix_msg=None):
     regs_content = regs_tpl.render(
         course=course, normal_regs=normal_regs, waitlist=waitlist,
         normal_count=normal_count, waitlist_count=waitlist_count,
-        reg_deductions=reg_deductions,
+        reg_deductions=reg_deductions, now=datetime.now(),
         datetime=format_datetime, status_text=get_status_text, status_class=get_status_class,
         deduction_type_text=get_deduction_type_text, deduction_type_class=get_deduction_type_class
     )
@@ -115,6 +118,10 @@ def make_app():
             pass
         try:
             package_module.auto_expire_packages()
+        except Exception:
+            pass
+        try:
+            voucher_module.auto_expire_vouchers()
         except Exception:
             pass
 
@@ -534,11 +541,13 @@ def make_app():
         store_comp = stats_module.get_store_comparison(date_from, date_to)
         blacklist_stats = blacklist_module.get_blacklist_stats(store_id_int, date_from, date_to)
         package_stats = package_module.get_package_stats(store_id_int, date_from, date_to)
+        voucher_stats = voucher_module.get_voucher_stats(store_id_int, date_from, date_to)
         all_stores = store_module.list_stores()
         return render('stats/index', overall=overall, no_show_rank=no_show_rank,
                       course_stats=course_stats, store_comp=store_comp, stores=all_stores,
                       selected_store=store_id_int, date_from=date_from_str, date_to=date_to_str,
-                      blacklist_stats=blacklist_stats, package_stats=package_stats)
+                      blacklist_stats=blacklist_stats, package_stats=package_stats,
+                      voucher_stats=voucher_stats)
 
     @_app.route('/blacklist')
     @auth.require_login
@@ -756,13 +765,82 @@ def make_app():
         if not member_phone:
             return '<div class="alert alert-warning">请输入手机号</div>'
         packages = package_module.get_member_packages_summary(member_phone)
-        if not packages:
-            return '<div class="alert alert-secondary"><i class="bi bi-credit-card me-1"></i>该会员暂无生效套餐</div>'
-        html = '<div class="alert alert-success"><i class="bi bi-credit-card-2-front me-1"></i>该会员有效套餐：<ul class="mb-0">'
-        for p in packages:
-            available = p['remaining_count'] - p['reserved_count']
-            type_text = get_package_type_text(p['package_type'])
-            html += f'<li>{p["package_name"]}（{type_text}）剩余{p["remaining_count"]}次，预占{p["reserved_count"]}次，可用{available}次</li>'
+        vouchers = voucher_module.get_member_vouchers_summary(member_phone)
+        html = ''
+        if vouchers:
+            html += '<div class="alert alert-purple mb-1"><i class="bi bi-ticket-perforated me-1"></i>可用补课券：<ul class="mb-0">'
+            for v in vouchers:
+                html += f'<li>{v["voucher_code"]}（来源：{v.get("source_course_name", "未知")}，到期：{v["expiry_time"].strftime("%Y-%m-%d %H:%M")}）</li>'
+            html += '</ul></div>'
+        if packages:
+            html += '<div class="alert alert-success"><i class="bi bi-credit-card-2-front me-1"></i>该会员有效套餐：<ul class="mb-0">'
+            for p in packages:
+                available = p['remaining_count'] - p['reserved_count']
+                type_text = get_package_type_text(p['package_type'])
+                html += f'<li>{p["package_name"]}（{type_text}）剩余{p["remaining_count"]}次，预占{p["reserved_count"]}次，可用{available}次</li>'
+            html += '</ul></div>'
+        if not packages and not vouchers:
+            html = '<div class="alert alert-secondary"><i class="bi bi-credit-card me-1"></i>该会员暂无生效套餐和补课券</div>'
+        return html
+
+    @_app.route('/vouchers')
+    @auth.require_login
+    def list_vouchers():
+        member_phone = request.query.get('member_phone', '').strip()
+        status = request.query.get('status', '')
+        store_id = request.query.get('store_id', '')
+        phone_val = member_phone if member_phone else None
+        status_val = status if status else None
+        store_id_int = int(store_id) if store_id and store_id.isdigit() else None
+        vouchers_list = voucher_module.list_vouchers(phone_val, status_val, store_id_int)
+        all_stores = store_module.list_stores()
+        return render('vouchers/list', vouchers=vouchers_list, stores=all_stores,
+                      phone=member_phone, selected_status=status, selected_store=store_id_int)
+
+    @_app.route('/vouchers/<voucher_id:int>')
+    @auth.require_login
+    def voucher_detail(voucher_id):
+        v = voucher_module.get_voucher(voucher_id)
+        if not v:
+            abort(404)
+        return render('vouchers/detail', voucher=v)
+
+    @_app.route('/vouchers/<voucher_id:int>/void', method=['POST'])
+    @auth.require_login
+    def void_voucher(voucher_id):
+        reason = request.forms.get('reason', '').strip() or None
+        result, err = voucher_module.void_voucher(voucher_id, reason)
+        if request.headers.get('HX-Request'):
+            if err:
+                return f'<div class="alert alert-danger">{err}</div>'
+            return _render_voucher_row(voucher_module.get_voucher(voucher_id))
+        return redirect('/vouchers')
+
+    @_app.route('/registrations/<reg_id:int>/leave', method=['POST'])
+    @auth.require_login
+    def apply_leave(reg_id):
+        reason = request.forms.get('reason', '').strip() or None
+        voucher, leave_req, msg = voucher_module.apply_leave(reg_id, reason)
+        if request.headers.get('HX-Request'):
+            if not voucher:
+                return render_error_msg(msg)
+            reg = reg_module.get_registration(reg_id)
+            return render_detail_registrations(reg['course_id'], msg)
+        redirect(f'/courses/{reg["course_id"]}' if reg else '/courses')
+
+    @_app.route('/vouchers/check', method=['POST'])
+    @auth.require_login
+    def check_member_vouchers():
+        member_phone = request.forms.get('member_phone', '').strip()
+        if not member_phone:
+            return '<div class="alert alert-warning">请输入手机号</div>'
+        vouchers = voucher_module.get_member_vouchers_summary(member_phone)
+        if not vouchers:
+            return '<div class="alert alert-secondary"><i class="bi bi-ticket-perforated me-1"></i>该会员暂无可用补课券</div>'
+        html = '<div class="alert alert-purple"><i class="bi bi-ticket-perforated me-1"></i>可用补课券：<ul class="mb-0">'
+        for v in vouchers:
+            store_name = v.get('store_name') or '全门店'
+            html += f'<li>{v["voucher_code"]}（来源：{v.get("source_course_name", "未知")}，到期：{v["expiry_time"].strftime("%Y-%m-%d %H:%M")}，适用：{store_name}）</li>'
         html += '</ul></div>'
         return html
 
@@ -793,7 +871,7 @@ def _render_course_row(course):
         cur = get_db_cursor(conn)
         cur.execute("""
             SELECT COUNT(*) as cnt FROM registrations
-            WHERE course_id = %s AND is_waitlist = FALSE AND status NOT IN ('dropped', 'frozen')
+            WHERE course_id = %s AND is_waitlist = FALSE AND status NOT IN ('dropped', 'frozen', 'leave')
         """, (course['id'],))
         normal_count = cur.fetchone()['cnt']
         cur.execute("""
@@ -817,6 +895,13 @@ def _render_package_row(pkg):
                       package_type_text=get_package_type_text,
                       package_status_text=get_package_status_text,
                       package_status_class=get_package_status_class)
+
+
+def _render_voucher_row(voucher):
+    tpl = env.get_template('vouchers/_row.html')
+    return tpl.render(v=voucher, datetime=format_datetime,
+                      voucher_status_text=get_voucher_status_text,
+                      voucher_status_class=get_voucher_status_class)
 
 
 if __name__ == '__main__':

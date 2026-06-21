@@ -1,0 +1,36 @@
+<tr>
+    <td class="ps-3"><small class="fw-mono text-muted">{{ v['voucher_code'] }}</small></td>
+    <td>
+        <div class="fw-medium">{{ v['member_name'] }}</div>
+        <small class="text-monospace text-muted">{{ v['member_phone'] }}</small>
+    </td>
+    <td>
+        <div class="fw-medium">{{ v.get('source_course_name', '-') }}</div>
+        <small class="text-muted">{{ v.get('source_course_start')|datetime }}</small>
+    </td>
+    <td>{{ v.get('store_name') or '全门店' }}</td>
+    <td><small>{{ v['generated_at']|datetime }}</small></td>
+    <td><small>{{ v['expiry_time']|datetime }}</small></td>
+    <td>
+        <span class="badge {{ v['status']|voucher_status_class }} rounded-pill">{{ v['status']|voucher_status_text }}</span>
+    </td>
+    <td>
+        {% if v['status'] == 'used' and v.get('used_course_name') %}
+        <div class="small">{{ v['used_course_name'] }}</div>
+        <small class="text-muted">{{ v.get('used_at')|datetime if v.get('used_at') else '-' }}</small>
+        {% elif v['status'] == 'voided' %}
+        <small class="text-muted">{{ v.get('void_reason') or '手动作废' }}</small>
+        {% else %}
+        <span class="text-muted small">-</span>
+        {% endif %}
+    </td>
+    <td class="pe-3 text-end">
+        <a href="/vouchers/{{ v['id'] }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+        {% if v['status'] == 'unused' %}
+        <button class="btn btn-sm btn-outline-danger" hx-post="/vouchers/{{ v['id'] }}/void" hx-target="closest tr" hx-swap="outerHTML"
+                hx-confirm="确认作废此补课券？">
+            <i class="bi bi-x-circle"></i> 作废
+        </button>
+        {% endif %}
+    </td>
+</tr>

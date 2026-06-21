@@ -31,6 +31,7 @@
                     <option value="checked_in" {% if selected_status == 'checked_in' %}selected{% endif %}>已签到</option>
                     <option value="dropped" {% if selected_status == 'dropped' %}selected{% endif %}>已退课</option>
                     <option value="frozen" {% if selected_status == 'frozen' %}selected{% endif %}>已冻结</option>
+                    <option value="leave" {% if selected_status == 'leave' %}selected{% endif %}>请假保课</option>
                     <option value="waitlist" {% if selected_status == 'waitlist' %}selected{% endif %}>候补中</option>
                     <option value="no_show" {% if selected_status == 'no_show' %}selected{% endif %}>失约</option>
                 </select>

@@ -52,6 +52,7 @@ def get_status_text(status):
         'no_show': '失约',
         'waitlist': '候补中',
         'promoted': '已转正',
+        'leave': '请假保课',
     }
     return status_map.get(status, status)
 
@@ -69,6 +70,7 @@ def get_status_class(status):
         'no_show': 'bg-danger',
         'waitlist': 'bg-warning',
         'promoted': 'bg-primary',
+        'leave': 'bg-purple',
     }
     return class_map.get(status, 'bg-secondary')
 
@@ -115,6 +117,7 @@ def get_deduction_type_text(deduction_type):
         'pre_deduct': '预占',
         'formal_deduct': '正式扣课',
         'return': '返还',
+        'voucher_deduct': '补课券抵扣',
     }
     return type_map.get(deduction_type, deduction_type)
 
@@ -124,8 +127,29 @@ def get_deduction_type_class(deduction_type):
         'pre_deduct': 'bg-info',
         'formal_deduct': 'bg-success',
         'return': 'bg-warning text-dark',
+        'voucher_deduct': 'bg-purple',
     }
     return class_map.get(deduction_type, 'bg-secondary')
+
+
+def get_voucher_status_text(status):
+    status_map = {
+        'unused': '未使用',
+        'used': '已使用',
+        'expired': '已过期',
+        'voided': '已作废',
+    }
+    return status_map.get(status, status)
+
+
+def get_voucher_status_class(status):
+    class_map = {
+        'unused': 'bg-success',
+        'used': 'bg-primary',
+        'expired': 'bg-secondary',
+        'voided': 'bg-danger',
+    }
+    return class_map.get(status, 'bg-secondary')
 
 
 def is_time_conflict(start1, end1, start2, end2):

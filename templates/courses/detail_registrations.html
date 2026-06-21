@@ -54,12 +54,18 @@
                                 {% endif %}
                             </td>
                             <td class="pe-3 text-end">
+                                {% if r['status'] in ['registered'] and now < course['freeze_time'] %}
+                                <button class="btn btn-sm btn-outline-purple" hx-post="/registrations/{{ r['id'] }}/leave" hx-target="#reg-msg" hx-swap="innerHTML"
+                                        hx-confirm="确认为该会员办理请假保课？将生成补课券并释放名额。">
+                                    <i class="bi bi-ticket-perforated"></i> 请假
+                                </button>
+                                {% endif %}
                                 {% if r['status'] in ['registered'] %}
                                 <button class="btn btn-sm btn-success" hx-post="/registrations/{{ r['id'] }}/checkin" hx-target="#reg-msg" hx-swap="innerHTML">
                                     <i class="bi bi-check2"></i> 签到
                                 </button>
                                 {% endif %}
-                                {% if r['status'] in ['registered', 'waitlist'] %}
+                                {% if r['status'] in ['registered', 'waitlist', 'leave'] %}
                                 <button class="btn btn-sm btn-outline-warning" hx-post="/registrations/{{ r['id'] }}/dropout" hx-target="#reg-msg" hx-swap="innerHTML"
                                         hx-confirm="确认办理退课/冻结？">
                                     <i class="bi bi-x-lg"></i> 退课
@@ -131,10 +137,12 @@
                 <div class="fw-bold text-secondary mb-2"><i class="bi bi-info-circle"></i> 业务规则</div>
                 <ul class="mb-0 ps-3">
                     <li>冻结时间前可正常退课，之后进入冻结状态</li>
+                    <li>冻结时间前可申请请假保课，生成补课券并释放名额</li>
                     <li>已签到会员不可被候补替换</li>
                     <li>候补严格按顺序自动递补</li>
                     <li>同一会员不能同时段报名两门课</li>
                     <li>课程结束后退课不计入递补</li>
+                    <li class="text-purple">报名时优先使用即将过期补课券，再用即将过期套餐</li>
                     <li class="text-danger">黑名单会员不可报名、不可候补、不可签到</li>
                 </ul>
             </div>

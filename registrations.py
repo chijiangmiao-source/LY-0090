@@ -8,6 +8,7 @@ from datetime import datetime
 import courses as course_module
 import blacklist as blacklist_module
 import packages as package_module
+import vouchers as voucher_module
 
 
 def get_registration(reg_id):
@@ -67,7 +68,7 @@ def check_member_time_conflict(member_phone, course_start, course_end, exclude_c
         FROM registrations r
         JOIN courses c ON r.course_id = c.id
         WHERE r.member_phone = %s
-          AND r.status NOT IN ('dropped', 'frozen')
+          AND r.status NOT IN ('dropped', 'frozen', 'leave')
           AND r.is_waitlist = FALSE
           AND c.status != 'cancelled'
     """
@@ -129,7 +130,7 @@ def create_registration(course_id, member_name, member_phone):
 
         cur.execute("""
             SELECT COUNT(*) as cnt FROM registrations
-            WHERE course_id = %s AND is_waitlist = FALSE AND status NOT IN ('dropped', 'frozen')
+            WHERE course_id = %s AND is_waitlist = FALSE AND status NOT IN ('dropped', 'frozen', 'leave')
             FOR UPDATE
         """, (course_id,))
         normal_count = cur.fetchone()['cnt']
@@ -170,22 +171,33 @@ def create_registration(course_id, member_name, member_phone):
             """, (reg_code, course_id, member_name, member_phone, now, 'registered', False))
             reg = cur.fetchone()
 
-            pkg = package_module.select_available_package(member_phone, course['store_id'], cur)
-            pkg_name = None
-            if pkg:
-                deduction, ded_err = package_module.pre_deduct(reg['id'], pkg['id'], cur)
+            voucher = voucher_module.select_available_voucher(member_phone, course['store_id'], cur)
+            voucher_code_used = None
+            if voucher:
+                ded_result, ded_err = voucher_module.use_voucher_for_registration(voucher['id'], reg['id'], cur)
                 if ded_err:
                     conn.rollback()
-                    return None, f"报名成功但套餐预占失败：{ded_err}"
-                pkg_name = pkg.get('package_name', '')
+                    return None, f"报名成功但补课券使用失败：{ded_err}"
+                voucher_code_used = voucher['voucher_code']
+            else:
+                pkg = package_module.select_available_package(member_phone, course['store_id'], cur)
+                pkg_name = None
+                if pkg:
+                    deduction, ded_err = package_module.pre_deduct(reg['id'], pkg['id'], cur)
+                    if ded_err:
+                        conn.rollback()
+                        return None, f"报名成功但套餐预占失败：{ded_err}"
+                    pkg_name = pkg.get('package_name', '')
 
         conn.commit()
         msg = "候补成功" if is_waitlist else "报名成功"
         if not is_waitlist:
-            if pkg_name:
+            if voucher_code_used:
+                msg += f"（已使用补课券 {voucher_code_used} 抵扣）"
+            elif pkg_name:
                 msg += f"（已从套餐「{pkg_name}」预占1次）"
             else:
-                msg += "（该会员暂无可用套餐）"
+                msg += "（该会员暂无可用套餐或补课券）"
         return dict(reg), msg
 
 
@@ -201,6 +213,8 @@ def checkin_registration(reg_id):
         return None, "该会员已退课"
     if reg['status'] == 'frozen':
         return None, "该报名已冻结"
+    if reg['status'] == 'leave':
+        return None, "该会员已请假保课，无法签到"
 
     blacklisted, bl_entry = blacklist_module.is_member_blacklisted(reg['member_phone'])
     if blacklisted:
@@ -234,8 +248,16 @@ def checkin_registration(reg_id):
             WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
             ORDER BY cd.created_at DESC LIMIT 1
         """, (reg_id,))
+        voucher_deduction = query_one("""
+            SELECT cd.*, mv.voucher_code FROM course_deductions cd
+            LEFT JOIN makeup_vouchers mv ON cd.voucher_id = mv.id
+            WHERE cd.registration_id = %s AND cd.deduction_type = 'voucher_deduct'
+            ORDER BY cd.created_at DESC LIMIT 1
+        """, (reg_id,))
         pkg_info = ""
-        if pre_deduction:
+        if voucher_deduction:
+            pkg_info = f"（补课券 {voucher_deduction['voucher_code'] or ''} 已抵扣，无需扣课）"
+        elif pre_deduction:
             _, ded_err = package_module.formal_deduct(reg_id, pre_deduction['package_id'], cur)
             if not ded_err:
                 pkg_info = f"（已从套餐「{pre_deduction['package_name'] or ''}」正式扣课）"
@@ -299,14 +321,27 @@ def dropout_registration(reg_id):
         was_normal = not reg['is_waitlist']
 
         if not is_frozen and was_normal and not reg['is_waitlist']:
-            pre_deduction = query_one("""
-                SELECT cd.*, mp.package_name FROM course_deductions cd
-                LEFT JOIN member_packages mp ON cd.package_id = mp.id
-                WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
+            voucher_deduction = query_one("""
+                SELECT cd.*, mv.voucher_code FROM course_deductions cd
+                LEFT JOIN makeup_vouchers mv ON cd.voucher_id = mv.id
+                WHERE cd.registration_id = %s AND cd.deduction_type = 'voucher_deduct'
                 ORDER BY cd.created_at DESC LIMIT 1
             """, (reg_id,))
-            if pre_deduction:
-                package_module.return_pre_deduct(reg_id, pre_deduction['package_id'], cur, "正常退课返还预占课次")
+            if voucher_deduction:
+                cur.execute("""
+                    UPDATE makeup_vouchers
+                    SET status = 'unused', used_registration_id = NULL, used_at = NULL, updated_at = %s
+                    WHERE id = %s AND status = 'used'
+                """, (now, voucher_deduction['voucher_id']))
+            else:
+                pre_deduction = query_one("""
+                    SELECT cd.*, mp.package_name FROM course_deductions cd
+                    LEFT JOIN member_packages mp ON cd.package_id = mp.id
+                    WHERE cd.registration_id = %s AND cd.deduction_type = 'pre_deduct'
+                    ORDER BY cd.created_at DESC LIMIT 1
+                """, (reg_id,))
+                if pre_deduction:
+                    package_module.return_pre_deduct(reg_id, pre_deduction['package_id'], cur, "正常退课返还预占课次")
 
         if reg['is_waitlist'] and reg['status'] == 'waitlist':
             cur.execute("""
@@ -436,8 +471,16 @@ def promote_waitlist(reg_id):
                     (new_count, reg['course_id']))
 
         pkg = package_module.select_available_package(reg['member_phone'], course['store_id'], cur)
+        voucher = voucher_module.select_available_voucher(reg['member_phone'], course['store_id'], cur)
+        voucher_code_used = None
         pkg_name = None
-        if pkg:
+        if voucher:
+            ded_result, ded_err = voucher_module.use_voucher_for_registration(voucher['id'], reg_id, cur)
+            if ded_err:
+                conn.rollback()
+                return None, f"转正成功但补课券使用失败：{ded_err}"
+            voucher_code_used = voucher['voucher_code']
+        elif pkg:
             deduction, ded_err = package_module.pre_deduct(reg_id, pkg['id'], cur)
             if ded_err:
                 conn.rollback()
@@ -446,10 +489,12 @@ def promote_waitlist(reg_id):
 
         conn.commit()
         msg = "候补转正成功"
-        if pkg_name:
+        if voucher_code_used:
+            msg += f"（已使用补课券 {voucher_code_used} 抵扣）"
+        elif pkg_name:
             msg += f"（已从套餐「{pkg_name}」预占1次）"
         else:
-            msg += "（该会员暂无可用套餐）"
+            msg += "（该会员暂无可用套餐或补课券）"
         return dict(promoted), msg
 
 
@@ -461,6 +506,8 @@ def mark_no_show(reg_id):
         return None, "该会员已签到，不能标记失约"
     if reg['status'] == 'dropped' or reg['status'] == 'frozen':
         return None, "该会员已退课/冻结"
+    if reg['status'] == 'leave':
+        return None, "该会员已请假保课，不能标记失约"
 
     course = course_module.get_course(reg['course_id'])
     now = datetime.now()

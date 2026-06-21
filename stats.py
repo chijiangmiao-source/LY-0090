@@ -45,7 +45,7 @@ def get_overall_stats(store_id=None, date_from=None, date_to=None):
     full_classes = query_one(f"""
         SELECT COUNT(*) as cnt FROM (
             SELECT c.id, c.max_students,
-                   COUNT(r.id) FILTER (WHERE r.is_waitlist = FALSE AND r.status NOT IN ('dropped', 'frozen')) as reg_cnt
+                   COUNT(r.id) FILTER (WHERE r.is_waitlist = FALSE AND r.status NOT IN ('dropped', 'frozen', 'leave')) as reg_cnt
             FROM courses c
             LEFT JOIN registrations r ON r.course_id = c.id
             WHERE {where_sql} AND c.status = 'completed'

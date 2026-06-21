@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}补课券管理{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-ticket-perforated me-2"></i>补课券管理</h4>
+        <small class="text-muted">管理会员请假保课生成的补课券</small>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-purple">
+            <div class="card-body">
+                <div class="small text-muted mb-1">未使用</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold" style="color:#6f42c1">{{ vouchers | selectattr('status', 'equalto', 'unused') | list | length }}</span>
+                    <span class="text-muted">张</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="small text-muted mb-1">已使用</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-primary">{{ vouchers | selectattr('status', 'equalto', 'used') | list | length }}</span>
+                    <span class="text-muted">张</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-secondary">
+            <div class="card-body">
+                <div class="small text-muted mb-1">已过期</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-secondary">{{ vouchers | selectattr('status', 'equalto', 'expired') | list | length }}</span>
+                    <span class="text-muted">张</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="small text-muted mb-1">已作废</div>
+                <div class="d-flex align-items-end gap-2">
+                    <span class="fs-2 fw-bold text-danger">{{ vouchers | selectattr('status', 'equalto', 'voided') | list | length }}</span>
+                    <span class="text-muted">张</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body py-3">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1">手机号</label>
+                        <input type="text" name="member_phone" class="form-control form-control-sm" placeholder="输入手机号查询" value="{{ phone }}" pattern="1\d{10}" maxlength="11" title="请输入有效的11位手机号" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,11)">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1">状态</label>
+                        <select name="status" class="form-select form-select-sm">
+                            <option value="">全部</option>
+                            <option value="unused" {% if selected_status == 'unused' %}selected{% endif %}>未使用</option>
+                            <option value="used" {% if selected_status == 'used' %}selected{% endif %}>已使用</option>
+                            <option value="expired" {% if selected_status == 'expired' %}selected{% endif %}>已过期</option>
+                            <option value="voided" {% if selected_status == 'voided' %}selected{% endif %}>已作废</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1">门店</label>
+                        <select name="store_id" class="form-select form-select-sm">
+                            <option value="">全部</option>
+                            {% for s in stores %}
+                            <option value="{{ s['id'] }}" {% if selected_store == s['id'] %}selected{% endif %}>{{ s['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-search"></i> 筛选</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body py-3">
+                <form hx-post="/vouchers/check" hx-target="#voucher-check-result" hx-swap="innerHTML">
+                    <label class="form-label small mb-1">快速查券</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="member_phone" class="form-control" placeholder="输入手机号" pattern="1\d{10}" maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,11)">
+                        <button type="submit" class="btn btn-outline-purple"><i class="bi bi-ticket-perforated"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="voucher-check-result"></div>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3">券编号</th>
+                    <th>会员</th>
+                    <th>来源课程</th>
+                    <th>适用门店</th>
+                    <th>生成时间</th>
+                    <th>有效期至</th>
+                    <th>状态</th>
+                    <th>使用/作废</th>
+                    <th class="pe-3 text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vouchers %}
+                {% include 'vouchers/_row.html' %}
+                {% endfor %}
+                {% if not vouchers %}
+                <tr><td colspan="9" class="text-center py-5 text-muted">暂无补课券记录</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

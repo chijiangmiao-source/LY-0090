@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}补课券详情 - {{ voucher['voucher_code'] }}{% endblock %}
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-2">
+            <li class="breadcrumb-item"><a href="/vouchers">补课券管理</a></li>
+            <li class="breadcrumb-item active">{{ voucher['voucher_code'] }}</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-ticket-perforated me-2"></i>{{ voucher['voucher_code'] }}</h4>
+            <small class="text-muted">{{ voucher['member_name'] }} · {{ voucher['member_phone'] }}</small>
+        </div>
+        <span class="badge {{ voucher['status']|voucher_status_class }} rounded-pill fs-6">{{ voucher['status']|voucher_status_text }}</span>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">来源课程</div>
+                <div class="fw-bold">{{ voucher.get('source_course_name', '-') }}</div>
+                <small class="text-muted">{{ voucher.get('source_course_start')|datetime }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">适用门店</div>
+                <div class="fw-bold">{{ voucher.get('store_name') or '全门店' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">生成时间</div>
+                <div class="fw-bold">{{ voucher['generated_at']|datetime }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="small text-muted">有效期至</div>
+                <div class="fw-bold {% if voucher['status'] == 'expired' %}text-danger{% endif %}">{{ voucher['expiry_time']|datetime }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% if voucher['status'] == 'used' %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="small text-muted">使用时间</div>
+                <div class="fw-bold">{{ voucher.get('used_at')|datetime }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="small text-muted">用于课程</div>
+                <div class="fw-bold">{{ voucher.get('used_course_name', '-') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="small text-muted">报名编号</div>
+                <div class="fw-bold">{{ voucher.get('used_reg_code', '-') }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif voucher['status'] == 'voided' %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="small text-muted">作废时间</div>
+                <div class="fw-bold">{{ voucher.get('voided_at')|datetime }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="small text-muted">作废原因</div>
+                <div class="fw-bold">{{ voucher.get('void_reason') or '手动作废' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif voucher['status'] == 'unused' %}
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-x-circle me-1"></i> 作废操作</div>
+    <div class="card-body">
+        <form hx-post="/vouchers/{{ voucher['id'] }}/void" hx-target="closest .card" hx-swap="outerHTML"
+              hx-confirm="确认作废此补课券？作废后不可恢复。">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label small">作废原因（选填）</label>
+                    <input type="text" name="reason" class="form-control form-control-sm" placeholder="请输入作废原因">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-x-circle"></i> 确认作废</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+<style>
+.bg-purple { background-color: #6f42c1 !important; }
+</style>
+{% endblock %}

@@ -30,7 +30,7 @@ def get_course_by_code(course_code):
 def list_courses(store_id=None, status=None, date_from=None, date_to=None, keyword=None):
     sql = """
         SELECT c.*, s.name as store_name, cl.name as classroom_name,
-            (SELECT COUNT(*) FROM registrations r WHERE r.course_id = c.id AND r.is_waitlist = FALSE AND r.status NOT IN ('dropped', 'frozen')) as registered_count,
+            (SELECT COUNT(*) FROM registrations r WHERE r.course_id = c.id AND r.is_waitlist = FALSE AND r.status NOT IN ('dropped', 'frozen', 'leave')) as registered_count,
             (SELECT COUNT(*) FROM registrations r WHERE r.course_id = c.id AND r.is_waitlist = TRUE AND r.status = 'waitlist') as current_waitlist
         FROM courses c 
         LEFT JOIN stores s ON c.store_id = s.id 
@@ -277,7 +277,7 @@ def get_course_waitlist(course_id):
 def get_normal_registration_count(course_id):
     return query_one("""
         SELECT COUNT(*) as cnt FROM registrations
-        WHERE course_id = %s AND is_waitlist = FALSE AND status NOT IN ('dropped', 'frozen')
+        WHERE course_id = %s AND is_waitlist = FALSE AND status NOT IN ('dropped', 'frozen', 'leave')
     """, (course_id,))['cnt']
 
 

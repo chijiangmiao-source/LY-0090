@@ -122,7 +122,8 @@ CREATE INDEX IF NOT EXISTS idx_member_packages_end_time ON member_packages(end_t
 CREATE TABLE IF NOT EXISTS course_deductions (
     id SERIAL PRIMARY KEY,
     registration_id INTEGER NOT NULL REFERENCES registrations(id) ON DELETE CASCADE,
-    package_id INTEGER NOT NULL REFERENCES member_packages(id) ON DELETE CASCADE,
+    package_id INTEGER REFERENCES member_packages(id) ON DELETE CASCADE,
+    voucher_id INTEGER REFERENCES makeup_vouchers(id) ON DELETE SET NULL,
     deduction_type VARCHAR(20) NOT NULL,
     count INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -131,6 +132,47 @@ CREATE TABLE IF NOT EXISTS course_deductions (
 
 CREATE INDEX IF NOT EXISTS idx_course_deductions_registration_id ON course_deductions(registration_id);
 CREATE INDEX IF NOT EXISTS idx_course_deductions_package_id ON course_deductions(package_id);
+CREATE INDEX IF NOT EXISTS idx_course_deductions_voucher_id ON course_deductions(voucher_id);
+
+CREATE TABLE IF NOT EXISTS makeup_vouchers (
+    id SERIAL PRIMARY KEY,
+    voucher_code VARCHAR(50) UNIQUE NOT NULL,
+    source_course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    source_registration_id INTEGER NOT NULL REFERENCES registrations(id) ON DELETE CASCADE,
+    member_name VARCHAR(100) NOT NULL,
+    member_phone VARCHAR(20) NOT NULL,
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expiry_time TIMESTAMP NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'unused',
+    store_id INTEGER REFERENCES stores(id) ON DELETE SET NULL,
+    used_registration_id INTEGER REFERENCES registrations(id),
+    used_at TIMESTAMP,
+    voided_at TIMESTAMP,
+    void_reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_makeup_vouchers_member_phone ON makeup_vouchers(member_phone);
+CREATE INDEX IF NOT EXISTS idx_makeup_vouchers_status ON makeup_vouchers(status);
+CREATE INDEX IF NOT EXISTS idx_makeup_vouchers_expiry_time ON makeup_vouchers(expiry_time);
+CREATE INDEX IF NOT EXISTS idx_makeup_vouchers_store_id ON makeup_vouchers(store_id);
+
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id SERIAL PRIMARY KEY,
+    registration_id INTEGER NOT NULL REFERENCES registrations(id) ON DELETE CASCADE,
+    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    member_phone VARCHAR(20) NOT NULL,
+    member_name VARCHAR(100),
+    reason TEXT,
+    leave_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'approved',
+    voucher_id INTEGER REFERENCES makeup_vouchers(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_leave_requests_member_phone ON leave_requests(member_phone);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_course_id ON leave_requests(course_id);
 
 CREATE TABLE IF NOT EXISTS system_config (
     key VARCHAR(50) PRIMARY KEY,
@@ -140,7 +182,8 @@ CREATE TABLE IF NOT EXISTS system_config (
 );
 
 INSERT INTO system_config (key, value, description) VALUES
-    ('no_show_threshold', '3', '失约次数达到该阈值自动加入限制名单')
+    ('no_show_threshold', '3', '失约次数达到该阈值自动加入限制名单'),
+    ('voucher_validity_days', '30', '补课券默认有效天数')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO stores (name, address, phone) VALUES
