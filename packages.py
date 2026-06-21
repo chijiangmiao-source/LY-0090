@@ -55,8 +55,14 @@ def create_package(member_phone, package_name, package_type, total_count,
         return None, "请选择套餐类型"
     if package_type not in ('count', 'period', 'single_store'):
         return None, "无效的套餐类型"
-    if total_count is None or int(total_count) <= 0:
+
+    if package_type != 'period' and (total_count is None or int(total_count) <= 0):
         return None, "总次数必须大于0"
+
+    if package_type == 'period':
+        total_count_int = 99999
+    else:
+        total_count_int = int(total_count)
 
     if not member_name:
         last_reg = query_one("""
@@ -197,7 +203,7 @@ def select_available_package(member_phone, store_id=None, cur=None):
           AND mp.status = 'active'
           AND mp.start_time <= %s
           AND mp.end_time > %s
-          AND (mp.remaining_count - mp.reserved_count) > 0
+          AND (mp.package_type = 'period' OR (mp.remaining_count - mp.reserved_count) > 0)
     """
     params = [member_phone, now, now]
 
@@ -223,21 +229,22 @@ def pre_deduct(registration_id, package_id, cur=None):
         pkg = cursor.fetchone()
         if not pkg or pkg['status'] != 'active':
             return None, "套餐不可用"
-        available = pkg['remaining_count'] - pkg['reserved_count']
-        if available <= 0:
-            return None, "套餐剩余可用次数不足"
 
-        cursor.execute("""
-            UPDATE member_packages
-            SET reserved_count = reserved_count + 1, updated_at = %s
-            WHERE id = %s
-        """, (now, package_id))
+        if pkg['package_type'] != 'period':
+            available = pkg['remaining_count'] - pkg['reserved_count']
+            if available <= 0:
+                return None, "套餐剩余可用次数不足"
+            cursor.execute("""
+                UPDATE member_packages
+                SET reserved_count = reserved_count + 1, updated_at = %s
+                WHERE id = %s
+            """, (now, package_id))
 
         cursor.execute("""
             INSERT INTO course_deductions (registration_id, package_id, deduction_type, count, created_at, notes)
             VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
         """, (registration_id, package_id, 'pre_deduct', 1, now,
-              f"报名预占课次，套餐: {pkg['package_name']}"))
+              f"报名预占课次，套餐: {pkg['package_name']}（{get_package_type_text(pkg['package_type'])}）"))
         deduction = cursor.fetchone()
         return dict(deduction), None
 
@@ -254,30 +261,46 @@ def formal_deduct(registration_id, package_id, cur=None):
 
     def _do_formal_deduct(cursor):
         cursor.execute("""
-            UPDATE member_packages
-            SET remaining_count = remaining_count - 1,
-                reserved_count = reserved_count - 1,
-                updated_at = %s
-            WHERE id = %s AND remaining_count > 0 AND reserved_count > 0
-        """, (now, package_id))
-        if cursor.rowcount == 0:
-            return None, "扣课失败，套餐状态异常"
-
-        cursor.execute("""
             SELECT * FROM member_packages WHERE id = %s
         """, (package_id,))
         pkg = cursor.fetchone()
+        if not pkg:
+            return None, "套餐不存在"
 
+        if pkg['package_type'] != 'period':
+            cursor.execute("""
+                UPDATE member_packages
+                SET remaining_count = remaining_count - 1,
+                    reserved_count = reserved_count - 1,
+                    updated_at = %s
+                WHERE id = %s AND remaining_count > 0 AND reserved_count > 0
+            """, (now, package_id))
+            if cursor.rowcount == 0:
+                return None, "扣课失败，套餐状态异常"
+
+            cursor.execute("""
+                SELECT * FROM member_packages WHERE id = %s
+            """, (package_id,))
+            pkg = cursor.fetchone()
+
+            if pkg and pkg['remaining_count'] - pkg['reserved_count'] <= 0 and pkg['reserved_count'] <= 0:
+                cursor.execute("""
+                    UPDATE member_packages SET status = 'exhausted', updated_at = %s WHERE id = %s
+                """, (now, package_id))
+        else:
+            cursor.execute("""
+                UPDATE member_packages
+                SET reserved_count = reserved_count - 1,
+                    updated_at = %s
+                WHERE id = %s AND reserved_count > 0
+            """, (now, package_id))
+
+        type_text = get_package_type_text(pkg['package_type']) if pkg else ''
         cursor.execute("""
             INSERT INTO course_deductions (registration_id, package_id, deduction_type, count, created_at, notes)
             VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
         """, (registration_id, package_id, 'formal_deduct', 1, now,
-              f"签到正式扣课，套餐: {pkg['package_name'] if pkg else ''}"))
-
-        if pkg and pkg['remaining_count'] - pkg['reserved_count'] <= 0 and pkg['reserved_count'] <= 0:
-            cursor.execute("""
-                UPDATE member_packages SET status = 'exhausted', updated_at = %s WHERE id = %s
-            """, (now, package_id))
+              f"签到正式扣课，套餐: {pkg['package_name'] if pkg else ''}（{type_text}）"))
 
         deduction = cursor.fetchone()
         return dict(deduction), None
@@ -295,26 +318,45 @@ def return_pre_deduct(registration_id, package_id, cur=None, reason="正常退�
 
     def _do_return(cursor):
         cursor.execute("""
-            UPDATE member_packages
-            SET reserved_count = reserved_count - 1,
-                updated_at = %s
-            WHERE id = %s AND reserved_count > 0
-        """, (now, package_id))
-        if cursor.rowcount == 0:
-            return None, "返还失败，套餐状态异常"
-
-        cursor.execute("""
             SELECT * FROM member_packages WHERE id = %s
         """, (package_id,))
         pkg = cursor.fetchone()
+        if not pkg:
+            return None, "套餐不存在"
+
+        if pkg['package_type'] != 'period':
+            cursor.execute("""
+                UPDATE member_packages
+                SET reserved_count = reserved_count - 1,
+                    updated_at = %s
+                WHERE id = %s AND reserved_count > 0
+            """, (now, package_id))
+            if cursor.rowcount == 0:
+                return None, "返还失败，套餐状态异常"
+
+            if pkg and pkg['status'] == 'exhausted' and (pkg['remaining_count'] - pkg['reserved_count']) > 0:
+                cursor.execute("""
+                    UPDATE member_packages SET status = 'active', updated_at = %s WHERE id = %s
+                """, (now, package_id))
+        else:
+            cursor.execute("""
+                UPDATE member_packages
+                SET reserved_count = reserved_count - 1,
+                    updated_at = %s
+                WHERE id = %s AND reserved_count > 0
+            """, (now, package_id))
+            if cursor.rowcount == 0:
+                return None, "返还失败，套餐状态异常"
+
+        type_text = get_package_type_text(pkg['package_type'])
 
         cursor.execute("""
             INSERT INTO course_deductions (registration_id, package_id, deduction_type, count, created_at, notes)
             VALUES (%s, %s, %s, %s, %s, %s) RETURNING *
         """, (registration_id, package_id, 'return', 1, now,
-              f"{reason}，套餐: {pkg['package_name'] if pkg else ''}"))
+              f"{reason}，套餐: {pkg['package_name'] if pkg else ''}（{type_text}）"))
 
-        if pkg and pkg['status'] == 'exhausted' and (pkg['remaining_count'] - pkg['reserved_count']) > 0:
+        if pkg and pkg['package_type'] != 'period' and pkg['status'] == 'exhausted' and (pkg['remaining_count'] - pkg['reserved_count']) > 0:
             cursor.execute("""
                 UPDATE member_packages SET status = 'active', updated_at = %s WHERE id = %s
             """, (now, package_id))
@@ -420,7 +462,7 @@ def get_package_stats(store_id=None, date_from=None, date_to=None):
 
     total_remaining = query_one("""
         SELECT COALESCE(SUM(remaining_count), 0) as sum FROM member_packages mp
-        WHERE {where} {store_filter} AND status = 'active'
+        WHERE {where} {store_filter} AND status = 'active' AND package_type != 'period'
     """.format(where=where_sql, store_filter=store_filter_sql), all_params)['sum']
 
     total_reserved = query_one("""
@@ -430,8 +472,18 @@ def get_package_stats(store_id=None, date_from=None, date_to=None):
 
     total_total = query_one("""
         SELECT COALESCE(SUM(total_count), 0) as sum FROM member_packages mp
-        WHERE {where} {store_filter}
+        WHERE {where} {store_filter} AND package_type != 'period'
     """.format(where=where_sql, store_filter=store_filter_sql), all_params)['sum']
+
+    period_active_count = query_one("""
+        SELECT COUNT(*) as cnt FROM member_packages mp
+        WHERE {where} {store_filter} AND status = 'active' AND package_type = 'period'
+    """.format(where=where_sql, store_filter=store_filter_sql), all_params)['cnt']
+
+    count_active_count = query_one("""
+        SELECT COUNT(*) as cnt FROM member_packages mp
+        WHERE {where} {store_filter} AND status = 'active' AND package_type != 'period'
+    """.format(where=where_sql, store_filter=store_filter_sql), all_params)['cnt']
 
     consumption_rate = 0
     if total_total > 0:
@@ -448,6 +500,8 @@ def get_package_stats(store_id=None, date_from=None, date_to=None):
         'total_reserved': total_reserved,
         'total_total': total_total,
         'consumption_rate': consumption_rate,
+        'period_active_count': period_active_count,
+        'count_active_count': count_active_count,
     }
 
 

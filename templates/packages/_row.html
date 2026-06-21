@@ -15,9 +15,19 @@
         {% endif %}
     </td>
     <td><small>{{ pkg['store_name'] or '全店通用' }}</small></td>
-    <td class="text-center">{{ pkg['total_count'] }}</td>
     <td class="text-center">
+        {% if pkg['package_type'] == 'period' %}
+        <span class="text-primary fw-bold">不限次</span>
+        {% else %}
+        {{ pkg['total_count'] }}
+        {% endif %}
+    </td>
+    <td class="text-center">
+        {% if pkg['package_type'] == 'period' %}
+        <span class="text-primary">∞</span>
+        {% else %}
         <span class="fw-bold {% if pkg['remaining_count'] <= 2 and pkg['status'] == 'active' %}text-danger{% elif pkg['remaining_count'] <= 5 and pkg['status'] == 'active' %}text-warning{% endif %}">{{ pkg['remaining_count'] }}</span>
+        {% endif %}
     </td>
     <td class="text-center">
         {% if pkg['reserved_count'] > 0 %}

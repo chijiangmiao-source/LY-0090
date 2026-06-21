@@ -17,16 +17,24 @@
                     <span class="fs-2 fw-bold text-success">{{ packages | selectattr('status', 'equalto', 'active') | list | length }}</span>
                     <span class="text-muted">个</span>
                 </div>
+                <small class="text-muted">
+                    次卡/单店卡: {{ packages | selectattr('status', 'equalto', 'active') | rejectattr('package_type', 'equalto', 'period') | list | length }} &nbsp;|&nbsp;
+                    周期卡: {{ packages | selectattr('status', 'equalto', 'active') | selectattr('package_type', 'equalto', 'period') | list | length }}
+                </small>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card border-start border-4 border-warning">
+        <div class="card border-start border-4 border-primary">
             <div class="card-body">
-                <div class="small text-muted mb-1">已用完</div>
+                <div class="small text-muted mb-1">次卡剩余总量</div>
                 <div class="d-flex align-items-end gap-2">
-                    <span class="fs-2 fw-bold text-warning">{{ packages | selectattr('status', 'equalto', 'exhausted') | list | length }}</span>
-                    <span class="text-muted">个</span>
+                    {% set ns = namespace(count=0) %}
+                    {% for p in packages if p['status'] == 'active' and p['package_type'] != 'period' %}
+                    {% set ns.count = ns.count + p['remaining_count'] %}
+                    {% endfor %}
+                    <span class="fs-2 fw-bold text-primary">{{ ns.count }}</span>
+                    <span class="text-muted">次</span>
                 </div>
             </div>
         </div>
@@ -47,7 +55,11 @@
             <div class="card-body">
                 <div class="small text-muted mb-1">预占课次</div>
                 <div class="d-flex align-items-end gap-2">
-                    <span class="fs-2 fw-bold text-info">{{ packages | selectattr('status', 'equalto', 'active') | sum(attribute='reserved_count') }}</span>
+                    {% set ns = namespace(count=0) %}
+                    {% for p in packages if p['status'] == 'active' %}
+                    {% set ns.count = ns.count + p['reserved_count'] %}
+                    {% endfor %}
+                    <span class="fs-2 fw-bold text-info">{{ ns.count }}</span>
                     <span class="text-muted">次</span>
                 </div>
             </div>

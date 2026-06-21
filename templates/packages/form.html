@@ -39,16 +39,16 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">套餐类型 <span class="text-danger">*</span></label>
-                            <select name="package_type" class="form-select" id="package_type" required>
+                            <select name="package_type" class="form-select" id="package_type" required onchange="toggleTotalCount()">
                                 <option value="">请选择</option>
-                                <option value="count">次卡（按次数计）</option>
-                                <option value="period">周期卡（按周期计）</option>
-                                <option value="single_store">单店卡（限指定门店）</option>
+                                <option value="count">次卡（按次数计，每次扣减）</option>
+                                <option value="period">周期卡（有效期内不限次）</option>
+                                <option value="single_store">单店卡（按次数计，限指定门店）</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="total_count_wrapper">
                             <label class="form-label">总次数 <span class="text-danger">*</span></label>
-                            <input type="number" name="total_count" class="form-control" placeholder="例如：20" min="1" required>
+                            <input type="number" name="total_count" class="form-control" id="total_count" placeholder="例如：20" min="1">
                         </div>
                     </div>
                     <div class="mb-3" id="store_select_wrapper" style="display:none;">
@@ -100,5 +100,23 @@ document.getElementById('package_type')?.addEventListener('change', function() {
         wrapper.style.display = this.value === 'single_store' ? 'block' : 'none';
     }
 });
+
+function toggleTotalCount() {
+    var type = document.getElementById('package_type').value;
+    var wrapper = document.getElementById('total_count_wrapper');
+    var input = document.getElementById('total_count');
+    if (type === 'period') {
+        wrapper.style.opacity = '0.5';
+        input.disabled = true;
+        input.value = '';
+        input.placeholder = '周期卡不限次数';
+        input.required = false;
+    } else {
+        wrapper.style.opacity = '1';
+        input.disabled = false;
+        input.placeholder = '例如：20';
+        input.required = true;
+    }
+}
 </script>
 {% endblock %}

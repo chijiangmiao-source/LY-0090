@@ -37,6 +37,15 @@
         <div class="card">
             <div class="card-body">
                 <div class="small text-muted">剩余次数</div>
+                {% if pkg['package_type'] == 'period' %}
+                <div class="fw-bold text-primary">
+                    不限次 <small class="text-muted">（有效期内）</small>
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar bg-primary" style="width:100%"></div>
+                </div>
+                <small class="text-muted">周期卡 · 有效期内可无限次使用</small>
+                {% else %}
                 <div class="fw-bold {% if pkg['remaining_count'] <= 2 and pkg['status'] == 'active' %}text-danger{% elif pkg['remaining_count'] <= 5 and pkg['status'] == 'active' %}text-warning{% endif %}">
                     {{ pkg['remaining_count'] }} / {{ pkg['total_count'] }}
                 </div>
@@ -45,6 +54,7 @@
                     <div class="progress-bar {% if pct >= 80 %}bg-danger{% elif pct >= 50 %}bg-warning{% else %}bg-primary{% endif %}" style="width:{{ pct }}%"></div>
                 </div>
                 <small class="text-muted">消耗率 {{ pct }}%</small>
+                {% endif %}
             </div>
         </div>
     </div>

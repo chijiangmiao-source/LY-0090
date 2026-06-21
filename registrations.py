@@ -435,8 +435,22 @@ def promote_waitlist(reg_id):
         cur.execute("UPDATE courses SET waitlist_count = %s WHERE id = %s",
                     (new_count, reg['course_id']))
 
+        pkg = package_module.select_available_package(reg['member_phone'], course['store_id'], cur)
+        pkg_name = None
+        if pkg:
+            deduction, ded_err = package_module.pre_deduct(reg_id, pkg['id'], cur)
+            if ded_err:
+                conn.rollback()
+                return None, f"转正成功但套餐预占失败：{ded_err}"
+            pkg_name = pkg.get('package_name', '')
+
         conn.commit()
-        return dict(promoted), "候补转正成功"
+        msg = "候补转正成功"
+        if pkg_name:
+            msg += f"（已从套餐「{pkg_name}」预占1次）"
+        else:
+            msg += "（该会员暂无可用套餐）"
+        return dict(promoted), msg
 
 
 def mark_no_show(reg_id):
